@@ -1,0 +1,29 @@
+{
+  "name": "tig-core",
+  "private": false,
+  "license": "MIT",
+  "version": "0.0.1",
+  "description": "TypeScript In Games Core",
+  "author": "Funny002<2048412928@qq.com>",
+  "main": "./dist/index.js",
+  "types": "./types",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Funny002/TIG-Core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Funny002/TIG-Core/issues"
+  },
+  "homepage": "https://github.com/Funny002/TIG-Core#readme"
+  "devDependencies": {
+    "@types/color": "^3.0.3",
+    "@types/node": "^20.4.5",
+    "color": "^4.2.3",
+    "typescript": "^5.1.6"
+  },
+  "include": [
+    "src/**/*.ts",
+    "types/**/*.d.ts",
+    "dist/**/*.js"
+  ]
+}

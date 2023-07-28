@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    //"target": "ESNext",
+    "rootDir": "./",
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "types",
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@utils/*": ["src/utils/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
