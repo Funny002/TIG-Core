@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
-    //"target": "ESNext",
+    "target": "ES2016",
     "rootDir": "./src",
     "outDir": "./dist",
     "declaration": true,
     "declarationDir": "./types",
     "baseUrl": ".",
     "paths": {
+      "@lib/*": ["./src/lib/*"],
       "@core/*": ["./src/core/*"],
-      "@utils/*": ["./src/utils/*"]
+      "@utils/*": ["./src/utils/*"],
     }
   },
   "include": ["src/**/*.ts"]

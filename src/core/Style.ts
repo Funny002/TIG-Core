@@ -1,4 +1,4 @@
-import { Color } from './Color';
+import { Color } from '@core/Color';
 
 // 线条样式
 export class Stroke {
@@ -51,7 +51,7 @@ export class StyleTransform {
 }
 
 // 贴图
-class Mapping {
+export class Mapping {
   protected load = false;
   public value: HTMLImageElement;
 

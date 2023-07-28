@@ -1,6 +1,6 @@
-import { Paths } from '@core/Paths';
+import { Shape } from '@core/Shape';
 
-export class Line extends Paths {
+export class Line extends Shape {
   draw() {
     // this.context.beginPath();
     // this.context.moveTo(this.points[0].x, this.points[0].y);
@@ -11,7 +11,7 @@ export class Line extends Paths {
   }
 }
 
-export class Circle extends Paths {
+export class Circle extends Shape {
   draw() {
     // this.context.beginPath();
     // this.context.arc(this.points[0].x, this.points[0].y, this.points[1].x, 0, Math.PI * 2);
@@ -19,7 +19,7 @@ export class Circle extends Paths {
   }
 }
 
-export class Rect extends Paths {
+export class Rect extends Shape {
   draw() {
     // this.context.beginPath();
     // this.context.rect(this.points[0].x, this.points[0].y, this.points[1].x, this.points[1].y);
@@ -27,7 +27,7 @@ export class Rect extends Paths {
   }
 }
 
-export class Ellipse extends Paths {
+export class Ellipse extends Shape {
   draw() {
     // this.context.beginPath();
     // this.context.ellipse(this.points[0].x, this.points[0].y, this.points[1].x, this.points[1].y, 0, 0, Math.PI * 2);

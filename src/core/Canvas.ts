@@ -1,4 +1,4 @@
-import { Paths, PathsGroup } from '@core/Paths';
+import { Point, Shape, ShapeGroup } from '@core/Shape';
 import { mergeObjects } from '@utils/object';
 import { throttle } from '@utils/limit';
 
@@ -11,8 +11,13 @@ export class Canvas {
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;
   //
+  private selected?: Shape;
+  private points = {
+    start: new Point(0, 0),
+    selected: new Point(0, 0),
+  };
   private options: CanvasOptions;
-  public graphics: PathsGroup = new PathsGroup();
+  private __graphics: ShapeGroup = new ShapeGroup();
 
   constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions>) {
     this.canvas = typeof selectors === 'string' ? document.querySelector(selectors) : selectors;
@@ -24,32 +29,37 @@ export class Canvas {
     this.canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), 100));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
     this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-    this.canvas.addEventListener('keydown', this.onKeyDown.bind(this));
-    this.canvas.addEventListener('keyup', this.onKeyUp.bind(this));
     //
     this.canvas.addEventListener('click', this.onClick.bind(this));
     this.canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
     this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
   }
 
-  private onMouseMove(event: MouseEvent) {
-    console.log('mousemove', event);
+  get graphics() {
+    return this.__graphics;
   }
 
-  private onMouseDown(event: MouseEvent) {
-    console.log('mousedown', event);
+  private onMouseMove({ offsetX: oX, offsetY: oY }: MouseEvent) {
+    if (!this.selected || !this.selected.dragging) return;
+    const { x: cX, y: cY } = this.points.start;
+    const { x: sX, y: sY } = this.points.start;
+    this.selected.left = cX + (sX - oX);
+    this.selected.top = cY + (sY - oY);
+    console.log('onMouseMove');
+  }
+
+  private onMouseDown({ offsetX, offsetY }: MouseEvent) {
+    this.points.start = new Point(offsetX, offsetY);
+    this.selected = this.graphics.isPointInShape(offsetX, offsetY);
+    if (this.selected) this.points.selected = new Point(this.selected.left, this.selected.top);
+    console.log('onMouseDown');
   }
 
   private onMouseUp(event: MouseEvent) {
-    console.log('mouseup', event);
-  }
-
-  private onKeyDown(event: KeyboardEvent) {
-    console.log('keydown', event);
-  }
-
-  private onKeyUp(event: KeyboardEvent) {
-    console.log('keyup', event);
+    // 有节流处理需要在移动最后一次
+    this.onMouseMove(event);
+    this.selected = undefined;
+    console.log('onMouseUp');
   }
 
   private onClick(event: MouseEvent) {
@@ -64,7 +74,11 @@ export class Canvas {
     console.log('contextmenu', event);
   }
 
-  draw() {
+  public add(graphics: Shape) {
+    this.__graphics.add(graphics);
+  }
+
+  public draw() {
     this.graphics.draw(this.context);
   }
 

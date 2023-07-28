@@ -1,3 +1,5 @@
+// @ts-nocheck
+// @ts-ignore
 import * as ColorPlugin from 'color';
 
 export class Color {

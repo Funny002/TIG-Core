@@ -15,11 +15,17 @@
     "url": "https://github.com/Funny002/TIG-Core/issues"
   },
   "homepage": "https://github.com/Funny002/TIG-Core#readme",
+  "scripts": {
+    "build": "tsc && npx webpack"
+  },
   "devDependencies": {
     "@types/color": "^3.0.3",
     "@types/node": "^20.4.5",
     "color": "^4.2.3",
-    "typescript": "^5.1.6"
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.1.6",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
   },
   "include": [
     "src/**/*.ts",

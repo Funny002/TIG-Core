@@ -9,7 +9,7 @@ const AnimationFrame = (function (win: any) {
 
 const getTime = () => window.performance?.now() || Date.now();
 
-class Animation {
+export class Animation {
   private last = 0;
   private count = 0;
   private limit: number;
@@ -70,5 +70,3 @@ class Animation {
     this.status = false;
   }
 }
-
-export default Animation;
