@@ -14,7 +14,7 @@
   "bugs": {
     "url": "https://github.com/Funny002/TIG-Core/issues"
   },
-  "homepage": "https://github.com/Funny002/TIG-Core#readme"
+  "homepage": "https://github.com/Funny002/TIG-Core#readme",
   "devDependencies": {
     "@types/color": "^3.0.3",
     "@types/node": "^20.4.5",
