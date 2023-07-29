@@ -1,4 +1,4 @@
-import { Style } from '@core/Style';
+import { Style } from '@lib/Style';
 
 export class Point {
   public x: number;

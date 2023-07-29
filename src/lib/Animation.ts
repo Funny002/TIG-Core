@@ -1,3 +1,5 @@
+import { Listener } from '@lib/Listener';
+
 const AnimationFrame = (function (win: any) {
   return window['requestAnimationFrame'] ||
     win['webkitRequestAnimationFrame'] ||
@@ -10,57 +12,57 @@ const AnimationFrame = (function (win: any) {
 const getTime = () => window.performance?.now() || Date.now();
 
 export class Animation {
-  private last = 0;
   private count = 0;
-  private limit: number;
   private status: boolean;
-  private listener: any = {};
+  private __limit: number;
+  private last = { fps: 0, records: 0 };
+  private listener: Listener<number> = new Listener();
 
   constructor(limitFPS = 0) {
-    this.limit = limitFPS;
+    this.__limit = limitFPS;
     this.status = false;
   }
 
+  get limit() {
+    return this.__limit;
+  }
+
+  set limit(fps: number) {
+    if ([Infinity, -Infinity].includes(fps)) throw new Error('fps cannot be Infinity, set it to 0 if you need to remove the restriction');
+    if (isNaN(fps)) throw new Error('fps must be a number');
+    this.__limit = fps;
+  }
+
   private getFps() {
-    const listener = this.listener.fps;
-    if (!listener) return;
     const time = getTime();
-    if (this.last) {
+    if (this.last.fps) {
       this.count += 1;
-      if ((time - this.last) > 1000) {
-        listener(this.count);
-        this.last = time;
+      if ((time - this.last.fps) > 1000) {
+        this.listener.publish('fps', this.count);
+        this.last.fps = time;
         this.count = 1;
       }
     } else {
       this.count = 1;
-      this.last = time;
+      this.last.fps = time;
     }
   }
 
   private getRecords() {
-    const listener = this.listener.records;
-    if (!listener) return;
     const time = getTime();
-    if (this.last && this.last !== time) {
-      const fps = 1000 / (time - this.last);
-      listener(parseFloat(fps.toFixed(1)));
+    if (this.last && this.last.records !== time) {
+      const fps = 1000 / (time - this.last.records);
+      this.listener.publish('records', parseFloat(fps.toFixed(1)));
     }
-    this.last = time;
+    this.last.records = time;
   }
 
-  public setLimit(fps: number) {
-    if ([Infinity, -Infinity].includes(fps)) throw new Error('fps cannot be Infinity, set it to 0 if you need to remove the restriction');
-    if (isNaN(fps)) throw new Error('fps must be a number');
-    this.limit = fps;
+  public on(key: 'fps' | 'records', listener: (fps: number) => void) {
+    this.listener.subscribe(key, listener);
   }
 
-  public onRecords(listener: (fps: number) => void) {
-    this.listener.records = listener;
-  }
-
-  public onFps(listener: (fps: number) => void) {
-    this.listener.fps = listener;
+  public off(key: 'fps' | 'records', listener: (fps: number) => void) {
+    this.listener.unsubscribe(key, listener);
   }
 
   public run(listener: () => void) {

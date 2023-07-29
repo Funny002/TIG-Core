@@ -1,4 +1,4 @@
-import { Color } from '@core/Color';
+import { Color } from '@lib/Color';
 
 // 线条样式
 export class Stroke {
