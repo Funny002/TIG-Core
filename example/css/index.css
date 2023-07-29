@@ -1,0 +1,11 @@
+.app {
+    padding-top: 10vh;
+    text-align: center;
+}
+
+#Canvas {
+    width: 400px;
+    height: 400px;
+    display: inline-block;
+    border: 1px solid #ddd;
+}

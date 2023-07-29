@@ -1,13 +1,16 @@
-import { Shape } from '@core/Shape';
+import { Point, Shape } from '@core/Shape';
 
 export class Line extends Shape {
-  draw() {
-    // this.context.beginPath();
-    // this.context.moveTo(this.points[0].x, this.points[0].y);
-    // for (let i = 1; i < this.points.length; i++) {
-    //   this.context.lineTo(this.points[i].x, this.points[i].y);
-    // }
-    // this.context.stroke();
+  draw(ctx: CanvasRenderingContext2D) {
+    const points = [...this.children as Point[]];
+    if (points.length < 2) return;
+    ctx.beginPath();
+    const start = points.shift();
+    ctx.moveTo(start.x, start.y);
+    for (const point of points) {
+      ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
   }
 }
 

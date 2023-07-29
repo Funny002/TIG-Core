@@ -14,7 +14,7 @@ export class Animation {
   private count = 0;
   private limit: number;
   private status: boolean;
-  private listener: any;
+  private listener: any = {};
 
   constructor(limitFPS = 0) {
     this.limit = limitFPS;
@@ -27,8 +27,9 @@ export class Animation {
     const time = getTime();
     if (this.last) {
       this.count += 1;
-      if ((this.last - time) > 1000) {
+      if ((time - this.last) > 1000) {
         listener(this.count);
+        this.last = time;
         this.count = 1;
       }
     } else {
@@ -37,10 +38,25 @@ export class Animation {
     }
   }
 
+  private getRecords() {
+    const listener = this.listener.records;
+    if (!listener) return;
+    const time = getTime();
+    if (this.last && this.last !== time) {
+      const fps = 1000 / (time - this.last);
+      listener(parseFloat(fps.toFixed(1)));
+    }
+    this.last = time;
+  }
+
   public setLimit(fps: number) {
     if ([Infinity, -Infinity].includes(fps)) throw new Error('fps cannot be Infinity, set it to 0 if you need to remove the restriction');
     if (isNaN(fps)) throw new Error('fps must be a number');
     this.limit = fps;
+  }
+
+  public onRecords(listener: (fps: number) => void) {
+    this.listener.records = listener;
   }
 
   public onFps(listener: (fps: number) => void) {
@@ -53,6 +69,7 @@ export class Animation {
     const newListener = () => {
       if (!this.status) return;
       this.getFps();
+      this.getRecords();
       if (this.limit) {
         AnimationFrame(newListener);
         const interval = 1000 / this.limit;

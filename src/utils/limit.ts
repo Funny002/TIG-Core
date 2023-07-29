@@ -1,19 +1,16 @@
 export function document(func: any, timeout = 300) {
   let state: NodeJS.Timeout;
   return function (...args: any[]) {
-    if (state) return;
-    state = setTimeout(() => {
-      // ...
-    }, timeout);
-    func(...args);
+    if (state) clearTimeout(state);
+    state = setTimeout(() => func(...args), timeout);
   };
 }
 
-export function throttle(func: any, timeout = 300, before?: (...args: any[]) => any) {
+export function throttle(func: any, timeout = 300) {
   let state: NodeJS.Timeout;
   return function (...args: any[]) {
-    if (state) clearTimeout(state);
-    args = before && (before(...args) || args); // 特殊调用方法
-    state = setTimeout(() => func(args), timeout);
+    if (state) return;
+    func(...args);
+    state = setTimeout(() => state = undefined, timeout);
   };
 }
