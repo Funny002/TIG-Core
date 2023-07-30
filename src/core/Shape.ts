@@ -23,11 +23,14 @@ export abstract class Shape {
   public left: number = 0;
   public index: number = -1;
   public visible: boolean = true;
+  public selected: boolean = true;
+  // public readonly: boolean = false;
   public dragging: boolean = false;
-  public selected: boolean = false;
-  public readonly: boolean = false;
   public style: Style = new Style();
   protected __children: (Shape | Point)[] = [];
+  public click?: (event: MouseEvent) => boolean;
+  public dblclick?: (event: MouseEvent) => boolean;
+  public contextmenu?: (event: MouseEvent) => boolean;
 
   get children(): (Shape | Point)[] {
     return this.__children;
@@ -72,9 +75,20 @@ export abstract class Shape {
   }
 
   abstract draw(context: CanvasRenderingContext2D): void;
+
+  public startDraw(context: CanvasRenderingContext2D) {
+    context.save();
+    context.translate(this.left, this.top);
+    this.draw(context);
+    context.restore();
+  }
 }
 
 export class ShapeGroup extends Shape {
+  constructor() {
+    super();
+  }
+
   get size() {
     let width = 0;
     let height = 0;
@@ -101,9 +115,9 @@ export class ShapeGroup extends Shape {
     return undefined;
   }
 
-  draw(context: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D) {
     for (const child of (this.children as Shape[])) {
-      if (child.visible) child.draw(context);
+      if (child.visible) child.startDraw(ctx);
     }
   }
 }

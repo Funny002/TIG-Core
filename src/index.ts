@@ -1,6 +1,6 @@
-import { Canvas, CanvasOptions } from '@core/Canvas';
+import { Canvas, CanvasOptions, ListenerTypes as CanvasType } from '@core/Canvas';
 import { mergeObjects } from '@utils/object';
-import { Animation } from '@lib/Animation';
+import { Animation } from '@core/Animation';
 import { Shape } from '@core/Shape';
 
 interface Options {
@@ -35,16 +35,20 @@ export class Create {
     this.animation.stop();
   }
 
-
-  public on<T = any>(key: ListenerType, listener: (data: T) => void) {
-    // this.animation.on(key, listener);
+  public on(key: CanvasType, listener: (data: { graphics?: Shape, event: MouseEvent }) => void): void
+  public on(key: ListenerType, listener: (data: number) => void): void
+  public on(key: string, listener: (data: any) => void) {
+    if (key === 'fps' || key === 'fpsRecords') return this.animation.on(key === 'fpsRecords' ? 'records' : key, listener);
+    if (['click', 'dblclick', 'contextmenu', 'mousemove', 'mousedown', 'mouseup'].includes(key)) return this.canvas.on(<CanvasType>key, listener);
+    throw new Error('Invalid listener type');
   }
 
-  public off<T = any>(key: ListenerType, listener: (data: T) => void) {
-    if (['fps', 'fpsRecords'].includes(key)) {
-      key = key === 'fpsRecords' ? 'records' : key;
-      this.animation.off(key, listener);
-    }
+  public off(key: CanvasType, listener: (data: { graphics?: Shape, event: MouseEvent }) => void): void
+  public off(key: ListenerType, listener: (data: number) => void): void
+  public off(key: string, listener: (data: any) => void) {
+    if (key === 'fps' || key === 'fpsRecords') return this.animation.off(key === 'fpsRecords' ? 'records' : key, listener);
+    if (['click', 'dblclick', 'contextmenu', 'mousemove', 'mousedown', 'mouseup'].includes(key)) return this.canvas.off(<CanvasType>key, listener);
+    throw new Error('Invalid listener type');
   }
 }
 

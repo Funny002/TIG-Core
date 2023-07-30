@@ -58,10 +58,12 @@ export class Animation {
   }
 
   public on(key: 'fps' | 'records', listener: (fps: number) => void) {
+    if (!['fps', 'records'].includes(key)) throw new Error('Invalid listener type');
     this.listener.subscribe(key, listener);
   }
 
   public off(key: 'fps' | 'records', listener: (fps: number) => void) {
+    if (!['fps', 'records'].includes(key)) throw new Error('Invalid listener type');
     this.listener.unsubscribe(key, listener);
   }
 

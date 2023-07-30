@@ -2,7 +2,7 @@
   "name": "tig-core",
   "private": false,
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "TypeScript In Games Core",
   "author": "Funny002<2048412928@qq.com>",
   "main": "./dist/index.js",

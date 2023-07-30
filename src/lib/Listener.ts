@@ -1,4 +1,4 @@
-type EventListener<T> = (data: T) => void;
+export type EventListener<T> = (data: T) => void;
 
 export class Listener<T = any> {
   private topics: { [key: string]: EventListener<T>[] } = {};
