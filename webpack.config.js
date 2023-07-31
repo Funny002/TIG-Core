@@ -17,7 +17,8 @@ module.exports = {
     }],
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js'], alias: {
+    extensions: ['.tsx', '.ts', '.js'],
+    alias: {
       '@lib': path.resolve(__dirname, './src/lib'),
       '@core': path.resolve(__dirname, './src/core'),
       '@utils': path.resolve(__dirname, './src/utils'),

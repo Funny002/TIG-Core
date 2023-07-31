@@ -42,6 +42,13 @@ export abstract class Shape {
     shape.parent = this;
   }
 
+  addShift(shape: (Shape | Point)) {
+    shape.index = 0;
+    shape.parent = this;
+    this.__children.unshift(shape);
+    this.updateChildrenIndexes(1);
+  }
+
   removeChild(index: number): (Shape | Point) | undefined {
     if (index >= 0 && index < this.__children.length) {
       const value = this.__children.splice(index, 1)[0];
@@ -50,6 +57,18 @@ export abstract class Shape {
       return value;
     }
     return undefined;
+  }
+
+  remove() {
+    this.parent && this.parent.removeChild(this.index);
+  }
+
+  removeAll() {
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      this.children[i].parent = undefined;
+      this.children[i].index = -1;
+    }
+    this.__children = [];
   }
 
   updateChildrenIndexes(index: number) {
