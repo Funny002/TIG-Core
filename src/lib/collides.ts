@@ -12,6 +12,7 @@ export function boxCollide(p1: Shape, p2: Shape) {
 
 // 圆检测
 function circleCollide(p1: Shape, p2: Shape) {
+  if (!boxCollide(p1, p2)) return false;
   const [x1, y1, r1] = [p1.left + p1.size.width / 2, p1.top + p1.size.height / 2, p1['radius']];
   const [x2, y2, r2] = [p2.left + p2.size.width / 2, p2.top + p2.size.height / 2, p2['radius']];
   const [x, y] = [x1 - x2, y1 - y2];
@@ -20,7 +21,10 @@ function circleCollide(p1: Shape, p2: Shape) {
 
 // 多边形检测
 function polygonCollide(p1: Shape, p2: Shape) {
-  const [p1_points, p2_points] = [p1.children as Point[], p2.children as Point[]];
+  if (!boxCollide(p1, p2)) return false;
+  const p1_points = [...p1.children as Point[]].map(v => ({ x: v.x + p1.left, y: v.y + p1.top }));
+  const p2_points = [...p2.children as Point[]].map(v => ({ x: v.x + p2.left, y: v.y + p2.top }));
+  // 坐标修正
   const [p1_length, p2_length] = [p1_points.length, p2_points.length];
   for (let i = 0; i < p1_length; i++) {
     const [p1_point, p1_next_point] = [p1_points[i], p1_points[(i + 1) % p1_length]];
@@ -40,6 +44,7 @@ function polygonCollide(p1: Shape, p2: Shape) {
 
 // 像素检测
 export function bitmapCollide(p1: Shape, p2: Shape) {
+  if (!boxCollide(p1, p2)) return false;
   const [p1_bit, p2_bit] = [p1.bitmap, p2.bitmap];
   if (!p1_bit || !p2_bit) return false;
   const box = {
