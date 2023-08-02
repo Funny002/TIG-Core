@@ -1,6 +1,8 @@
-import { Style } from '@lib/Style';
-import { throttle } from '@utils/limit';
 import { bitmapCollide, getPixel } from '@lib/collides';
+import { BoundingBox } from '@core/LooseOctree';
+import { Listener } from '@lib/Listener';
+import { throttle } from '@utils/limit';
+import { Style } from '@lib/Style';
 
 export class Point {
   public x: number;
@@ -21,13 +23,14 @@ export class Point {
 
 export abstract class Shape {
   public parent?: Shape;
-  public top: number = 0;
-  public left: number = 0;
+  private __top: number = 0;
+  private __left: number = 0;
   public index: number = -1;
   public visible: boolean = true;
   public selected: boolean = true;
   public dragging: boolean = false;
   public style: Style = new Style();
+  public collision?: (shape: Shape) => void;
   public click?: (event: MouseEvent) => boolean;
   public dblclick?: (event: MouseEvent) => boolean;
   public contextmenu?: (event: MouseEvent) => boolean;
@@ -38,9 +41,28 @@ export abstract class Shape {
   private readonly styleCanvas: HTMLCanvasElement;
   private readonly contentCanvas: HTMLCanvasElement;
   public readonly update: (status?: boolean) => void;
+  private listener: Listener<{ graphics?: Shape, value: any }> = new Listener();
 
   get children(): (Shape | Point)[] {
     return this.__children;
+  }
+
+  get top() {
+    return this.__top;
+  }
+
+  set top(value: number) {
+    this.__top = value;
+    this.listener.publish('top', { graphics: this, value });
+  }
+
+  get left() {
+    return this.__left;
+  }
+
+  set left(value: number) {
+    this.__left = value;
+    this.listener.publish('left', { graphics: this, value });
   }
 
   get bitmap() {
@@ -57,10 +79,23 @@ export abstract class Shape {
     return { width, height };
   }
 
+  getBoundingBox() {
+    const { top, left, size: { width, height } } = this;
+    return new BoundingBox(left, top, left + width, top + height);
+  }
+
   constructor() {
     this.styleCanvas = document.createElement('canvas');
     this.contentCanvas = document.createElement('canvas');
     this.update = throttle(this.handleBitmap.bind(this), 10);
+  }
+
+  public on(key: 'top' | 'left' | 'size', listener: (value: any) => void) {
+    this.listener.subscribe(key, listener);
+  }
+
+  public off(key: 'top' | 'left' | 'size', listener) {
+    this.listener.unsubscribe(key, listener);
   }
 
   abstract draw(context: CanvasRenderingContext2D): void;
@@ -87,6 +122,7 @@ export abstract class Shape {
     context.drawImage(this.contentCanvas, 0, 0);
     this.style.draw(context);
     this.__bitmap = context.getImageData(0, 0, this.size.width, this.size.height);
+    this.listener.publish('left', { graphics: this, value: undefined });
   }
 
   private updateChildrenIndexes(index: number) {
