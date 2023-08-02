@@ -1,4 +1,4 @@
-export function document(func: any, timeout = 300) {
+export function debounce(func: any, timeout = 300) {
   let state: NodeJS.Timeout;
   return function (...args: any[]) {
     if (state) clearTimeout(state);

@@ -98,9 +98,9 @@ export class Style {
     this.__fill = fill instanceof HTMLImageElement ? new Mapping(fill) : fill;
   }
 
-  // draw(ctx: CanvasRenderingContext2D) {
-  //   ctx.save();
-  //   ctx.transform(2, 0, 0, 2, 0, 0);
-  //   ctx.restore();
-  // }
+  draw(ctx: CanvasRenderingContext2D) {
+    //   ctx.save();
+    //   ctx.transform(2, 0, 0, 2, 0, 0);
+    //   ctx.restore();
+  }
 }

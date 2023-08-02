@@ -1,4 +1,6 @@
 import { Style } from '@lib/Style';
+import { throttle } from '@utils/limit';
+import { getPixel } from '@utils/collision';
 
 export class Point {
   public x: number;
@@ -24,58 +26,25 @@ export abstract class Shape {
   public index: number = -1;
   public visible: boolean = true;
   public selected: boolean = true;
-  // public readonly: boolean = false;
   public dragging: boolean = false;
   public style: Style = new Style();
-  protected __children: (Shape | Point)[] = [];
   public click?: (event: MouseEvent) => boolean;
   public dblclick?: (event: MouseEvent) => boolean;
   public contextmenu?: (event: MouseEvent) => boolean;
+  //
+  private __bitmap?: ImageData;
+  private saveDraw: boolean = false;
+  private __children: (Shape | Point)[] = [];
+  private readonly styleCanvas: HTMLCanvasElement;
+  private readonly contentCanvas: HTMLCanvasElement;
+  public readonly update: (status?: boolean) => void;
 
   get children(): (Shape | Point)[] {
     return this.__children;
   }
 
-  add(shape: (Shape | Point)) {
-    shape.index = this.children.length;
-    this.__children.push(shape);
-    shape.parent = this;
-  }
-
-  addShift(shape: (Shape | Point)) {
-    shape.index = 0;
-    shape.parent = this;
-    this.__children.unshift(shape);
-    this.updateChildrenIndexes(1);
-  }
-
-  removeChild(index: number): (Shape | Point) | undefined {
-    if (index >= 0 && index < this.__children.length) {
-      const value = this.__children.splice(index, 1)[0];
-      value.parent = undefined;
-      this.updateChildrenIndexes(index);
-      return value;
-    }
-    return undefined;
-  }
-
-  remove() {
-    this.parent && this.parent.removeChild(this.index);
-  }
-
-  removeAll() {
-    for (let i = this.children.length - 1; i >= 0; i--) {
-      this.children[i].parent = undefined;
-      this.children[i].index = -1;
-    }
-    this.__children = [];
-  }
-
-  updateChildrenIndexes(index: number) {
-    const long = this.children.length;
-    for (let i = index; i < long; i++) {
-      this.__children[i].index = index;
-    }
+  get bitmap() {
+    return this.__bitmap;
   }
 
   get size() {
@@ -88,18 +57,105 @@ export abstract class Shape {
     return { width, height };
   }
 
-  // 有条件的可以去实现方法
-  isPointInShape(x: number, y: number): Shape | undefined {
-    return undefined;
+  constructor() {
+    this.styleCanvas = document.createElement('canvas');
+    this.contentCanvas = document.createElement('canvas');
+    this.update = throttle(this.handleBitmap.bind(this), 10);
   }
 
   abstract draw(context: CanvasRenderingContext2D): void;
 
+  private resetCanvas(key: 'style' | 'content') {
+    const keyMap = { style: 'styleCanvas', content: 'contentCanvas' };
+    const { width, height } = this.size;
+    if (!keyMap[key]) throw new Error('Invalid key type');
+    const keys = keyMap[key];
+    this[keys].width = width;
+    this[keys].height = height;
+    this[keys].getContext('2d').clearRect(0, 0, width, height);
+  }
+
+  private handleBitmap(status = false) {
+    if (this.saveDraw || status) {
+      this.resetCanvas('content');
+      const context = this.contentCanvas.getContext('2d');
+      this.draw(context);
+      this.saveDraw = false;
+    }
+    this.resetCanvas('style');
+    const context = this.styleCanvas.getContext('2d');
+    context.drawImage(this.contentCanvas, 0, 0);
+    this.style.draw(context);
+    this.__bitmap = context.getImageData(0, 0, this.size.width, this.size.height);
+  }
+
+  private updateChildrenIndexes(index: number) {
+    const long = this.children.length;
+    for (let i = index; i < long; i++) {
+      this.__children[i].index = index;
+    }
+  }
+
+  public add(shape: (Shape | Point)) {
+    shape.index = this.children.length;
+    this.__children.push(shape);
+    shape.parent = this;
+    this.saveDraw = true;
+    this.update();
+  }
+
+  public addShift(shape: (Shape | Point)) {
+    shape.index = 0;
+    shape.parent = this;
+    this.__children.unshift(shape);
+    this.updateChildrenIndexes(1);
+    this.saveDraw = true;
+    this.update();
+  }
+
+  public removeChild(index: number): (Shape | Point) | undefined {
+    if (index >= 0 && index < this.__children.length) {
+      const value = this.__children.splice(index, 1)[0];
+      value.parent = undefined;
+      this.updateChildrenIndexes(index);
+      this.update();
+      return value;
+    }
+    return undefined;
+  }
+
+  destroy() {
+    this.styleCanvas.remove();
+    this.contentCanvas.remove();
+  }
+
+  remove() {
+    this.destroy();
+    this.parent && this.parent.removeChild(this.index);
+  }
+
+  removeAll() {
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      this.children[i].parent = undefined;
+      this.children[i].index = -1;
+    }
+    this.__children = [];
+    this.update();
+  }
+
   public startDraw(context: CanvasRenderingContext2D) {
     context.save();
-    context.translate(this.left, this.top);
-    this.draw(context);
+    context.drawImage(this.styleCanvas, this.left, this.top);
     context.restore();
+  }
+
+  public isPointInShape(x: number, y: number): Shape | undefined {
+    [x, y] = [x - this.left, y - this.top]; // 坐标修正
+    return (this.bitmap && getPixel(this.bitmap, x, y)[3] !== 0) ? this : undefined;
+  }
+
+  public crashDetection() {
+    return false;
   }
 }
 
@@ -123,6 +179,7 @@ export class ShapeGroup extends Shape {
   }
 
   isPointInShape(x: number, y: number): Shape | undefined {
+    [x, y] = [x - this.left, y - this.top]; // 数值偏差
     const list = this.children as Shape[];
     for (let i = list.length - 1; i >= 0; i--) {
       const { visible, selected, isPointInShape } = list[i];
