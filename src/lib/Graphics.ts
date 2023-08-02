@@ -53,6 +53,10 @@ export class Circle extends ShapeItem {
     this.opt = mergeObjects({ radius, startAngle: 0, endAngle: 2 * Math.PI }, options || {});
   }
 
+  get radius() {
+    return this.opt.radius;
+  };
+
   add() {
     throw new Error('Method not implemented.');
   }

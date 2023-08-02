@@ -1,6 +1,6 @@
 import { Style } from '@lib/Style';
 import { throttle } from '@utils/limit';
-import { getPixel } from '@utils/collision';
+import { bitmapCollide, getPixel } from '@lib/collides';
 
 export class Point {
   public x: number;
@@ -34,7 +34,7 @@ export abstract class Shape {
   //
   private __bitmap?: ImageData;
   private saveDraw: boolean = false;
-  private __children: (Shape | Point)[] = [];
+  protected __children: (Shape | Point)[] = [];
   private readonly styleCanvas: HTMLCanvasElement;
   private readonly contentCanvas: HTMLCanvasElement;
   public readonly update: (status?: boolean) => void;
@@ -154,8 +154,8 @@ export abstract class Shape {
     return (this.bitmap && getPixel(this.bitmap, x, y)[3] !== 0) ? this : undefined;
   }
 
-  public crashDetection() {
-    return false;
+  public crashDetection(shape: Shape) {
+    return bitmapCollide(this, shape);
   }
 }
 
