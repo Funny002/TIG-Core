@@ -16,7 +16,8 @@
   },
   "homepage": "https://github.com/Funny002/TIG-Core#readme",
   "scripts": {
-    "build": "tsc && npx webpack"
+    "build": "npx webpack",
+    "build:watch": "npx webpack -w"
   },
   "devDependencies": {
     "@types/color": "^3.0.3",

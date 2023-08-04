@@ -28,8 +28,8 @@ export class Animation {
   }
 
   set limit(fps: number) {
-    if ([Infinity, -Infinity].includes(fps)) throw new Error('fps cannot be Infinity, set it to 0 if you need to remove the restriction');
-    if (isNaN(fps)) throw new Error('fps must be a number');
+    if ([Infinity, -Infinity].includes(fps)) throw new Error('FPS cannot be Infinity, set it to 0 if you need to remove the restriction');
+    if (isNaN(fps)) throw new Error('FPS must be a number');
     this.__limit = fps;
   }
 
@@ -38,7 +38,7 @@ export class Animation {
     if (this.last.fps) {
       this.count += 1;
       if ((time - this.last.fps) > 1000) {
-        this.listener.publish('fps', this.count);
+        this.listener.publish('FPS', this.count);
         this.last.fps = time;
         this.count = 1;
       }
@@ -52,18 +52,18 @@ export class Animation {
     const time = getTime();
     if (this.last && this.last.records !== time) {
       const fps = 1000 / (time - this.last.records);
-      this.listener.publish('records', parseFloat(fps.toFixed(1)));
+      this.listener.publish('RealTimeFPS', parseFloat(fps.toFixed(1)));
     }
     this.last.records = time;
   }
 
-  public on(key: 'fps' | 'records', listener: (fps: number) => void) {
-    if (!['fps', 'records'].includes(key)) throw new Error('Invalid listener type');
+  public on(key: 'FPS' | 'RealTimeFPS', listener: (fps: number) => void) {
+    if (!['FPS', 'RealTimeFPS'].includes(key)) throw new Error('Invalid listener type');
     this.listener.subscribe(key, listener);
   }
 
-  public off(key: 'fps' | 'records', listener: (fps: number) => void) {
-    if (!['fps', 'records'].includes(key)) throw new Error('Invalid listener type');
+  public off(key: 'FPS' | 'RealTimeFPS', listener: (fps: number) => void) {
+    if (!['FPS', 'RealTimeFPS'].includes(key)) throw new Error('Invalid listener type');
     this.listener.unsubscribe(key, listener);
   }
 
