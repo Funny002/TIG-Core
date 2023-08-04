@@ -5,7 +5,7 @@
   "version": "1.0.2",
   "description": "TypeScript In Games Core",
   "author": "Funny002<2048412928@qq.com>",
-  "main": "./dist/tig-core.js",
+  "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "repository": {
     "type": "git",

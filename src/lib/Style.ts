@@ -68,7 +68,7 @@
 //   }
 // }
 //
-export class Style {
+// export class Style {
 //   public stroke?: Stroke;
 //   public rotate: number = 0;
 //   public opacity: number = 1;
@@ -98,12 +98,17 @@ export class Style {
 //     this.__fill = fill instanceof HTMLImageElement ? new Mapping(fill) : fill;
 //   }
 //
-  draw(ctx: CanvasRenderingContext2D) {
+//   draw(ctx: CanvasRenderingContext2D) {
 //     if (this.fill) { // 填充
 //       console.log(this.fill);
 //     }
 //     //   ctx.save();
 //     //   ctx.transform(2, 0, 0, 2, 0, 0);
 //     //   ctx.restore();
+//   }
+// }
+
+export class Style {
+  draw(ctx: CanvasRenderingContext2D) {
   }
 }
