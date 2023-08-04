@@ -1,4 +1,4 @@
-import { Shape } from '@core/Shape';
+import { Shape } from './Shape';
 
 export class BoundingBox {
   top: number;

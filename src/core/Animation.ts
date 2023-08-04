@@ -1,4 +1,4 @@
-import { Listener } from '@lib/Listener';
+import { Listener } from '../lib/Listener';
 
 const AnimationFrame = (function (win: any) {
   return window['requestAnimationFrame'] ||

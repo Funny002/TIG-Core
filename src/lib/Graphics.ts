@@ -1,5 +1,5 @@
-import { mergeObjects } from '@utils/object';
-import { Point, Shape } from '@core/Shape';
+import { mergeObjects } from '../utils/object';
+import { Point, Shape } from '../core/Shape';
 
 interface CircleOptions {
   startAngle: number;

@@ -1,4 +1,4 @@
-import { Shape, Point } from '@core/Shape';
+import { Shape, Point } from '../core/Shape';
 
 export function getPixel(bitmap: ImageData, x: number, y: number): Uint8ClampedArray {
   const index = (y * bitmap.width + x) * 4;

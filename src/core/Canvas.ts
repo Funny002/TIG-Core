@@ -1,7 +1,7 @@
-import { Point, Shape, ShapeGroup } from '@core/Shape';
-import { mergeObjects } from '@utils/object';
-import { Listener } from '@lib/Listener';
-import { throttle } from '@utils/limit';
+import { Point, Shape, ShapeGroup } from './Shape';
+import { mergeObjects } from '../utils/object';
+import { Listener } from '../lib/Listener';
+import { throttle } from '../utils/limit';
 
 export interface CanvasOptions {
   width: number;

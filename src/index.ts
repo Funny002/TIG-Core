@@ -1,9 +1,9 @@
-import { Canvas, CanvasOptions, ListenerTypes, ListenerTypes as CanvasType } from '@core/Canvas';
-import { LooseOctree } from '@core/LooseOctree';
-import { mergeObjects } from '@utils/object';
-import { Animation } from '@core/Animation';
-import { Listener } from '@lib/Listener';
-import { Shape } from '@core/Shape';
+import { Canvas, CanvasOptions, ListenerTypes as CanvasType } from './core/Canvas';
+import { LooseOctree } from './core/LooseOctree';
+import { mergeObjects } from './utils/object';
+import { Animation } from './core/Animation';
+import { Listener } from './lib/Listener';
+import { Shape } from './core/Shape';
 
 interface Options {
   limitFps?: number;
@@ -103,7 +103,7 @@ export class CreateCollision extends Create {
   }
 }
 
-export * from '@core/Shape';
-export * from '@lib/Style';
-export * from '@lib/Color';
-export * from '@lib/Graphics';
+export * from './core/Shape';
+export * from './lib/Style';
+export * from './lib/Color';
+export * from './lib/Graphics';

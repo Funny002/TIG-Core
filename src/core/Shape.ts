@@ -1,8 +1,8 @@
-import { bitmapCollide, getPixel } from '@lib/collides';
-import { BoundingBox } from '@core/LooseOctree';
-import { Listener } from '@lib/Listener';
-import { throttle } from '@utils/limit';
-import { Style } from '@lib/Style';
+import { bitmapCollide, getPixel } from '../lib/collides';
+import { BoundingBox } from './LooseOctree';
+import { Listener } from '../lib/Listener';
+import { throttle } from '../utils/limit';
+import { Style } from '../lib/Style';
 
 export class Point {
   public x: number;
