@@ -94,6 +94,7 @@ export class Rect extends ShapeItem {
     const { top, left, width, height } = this;
     ctx.beginPath();
     ctx.rect(left, top, width, height);
+    ctx.fill();
     ctx.stroke();
   }
 }

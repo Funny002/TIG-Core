@@ -190,11 +190,16 @@ export abstract class Shape {
   public startDraw(context: CanvasRenderingContext2D) {
     context.save();
     context.translate(this.left, this.top);
+    context.drawImage(this.graphs, 0, 0);
     context.restore();
   }
 }
 
 export abstract class ShapeItem extends Shape {
+  constructor() {
+    super();
+  }
+
   get children() {
     return this._children as Point[];
   }
@@ -209,6 +214,7 @@ export abstract class ShapeItem extends Shape {
 }
 
 export class ShapeGroup extends Shape {
+  constructor() {super();}
   get children() {
     return this._children as Shape[];
   }

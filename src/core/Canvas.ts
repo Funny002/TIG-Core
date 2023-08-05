@@ -58,6 +58,7 @@ export class Canvas {
     const { offsetX, offsetY } = event;
     this.points.start = new Point(offsetX, offsetY);
     this.selected = this.graphics.isPointInShape(offsetX, offsetY);
+    console.log('onMouseDown', this.selected);
     this.listener.publish('mousedown', { graphics: this.selected, event });
     if (this.selected) this.points.selected = new Point(this.selected.left, this.selected.top);
   }
