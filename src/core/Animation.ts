@@ -1,4 +1,5 @@
 import { Listener } from '../lib/Listener';
+import { Watch } from '../lib/Decorators';
 
 const AnimationFrame = (function (win: any) {
   return window['requestAnimationFrame'] ||
@@ -14,23 +15,22 @@ const getTime = () => window.performance?.now() || Date.now();
 export class Animation {
   private count = 0;
   private status: boolean;
-  private __limit: number;
   private last = { fps: 0, records: 0 };
   private listener: Listener<number> = new Listener();
+  //
+  @Watch<number>(function (value, lest) {
+    try {
+      if (isNaN(value)) throw new Error('FPS must be a number');
+      if ([Infinity, -Infinity].includes(value)) throw new Error('FPS cannot be Infinity, set it to 0 if you need to remove the restriction');
+    } catch (e) {
+      this['limit'] = lest;
+      throw new Error(e.message);
+    }
+  }) public limit: number = 0;
 
   constructor(limitFPS = 0) {
-    this.__limit = limitFPS;
+    this.limit = limitFPS;
     this.status = false;
-  }
-
-  get limit() {
-    return this.__limit;
-  }
-
-  set limit(fps: number) {
-    if ([Infinity, -Infinity].includes(fps)) throw new Error('FPS cannot be Infinity, set it to 0 if you need to remove the restriction');
-    if (isNaN(fps)) throw new Error('FPS must be a number');
-    this.__limit = fps;
   }
 
   private getFps() {
