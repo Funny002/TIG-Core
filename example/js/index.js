@@ -6,7 +6,7 @@ function randomNum(min, max) {
 const syncAwait = (timout = 200) => new Promise(resolve => setTimeout(resolve, timout));
 
 window.addEventListener('load', function init() {
-  // const { Create, Rect, Line, Point } = window['TigCore'];
+  const { Create, Rect, Line, Point } = window['TigCore'];
   // const canvas = document.getElementById('Canvas');
   // const core = new Create(canvas, { width: 400, height: 400, throttle: 10 });
   // core.on('FPS', console.log);

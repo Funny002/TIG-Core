@@ -2,8 +2,8 @@ import { bitmapCollide, getPixel } from '../lib/collides';
 import { Listener } from '../lib/Listener';
 import { throttle } from '../utils/limit';
 import { Watch } from '../lib/Decorators';
-import { Style } from '../lib/Style';
 import { Quadtree } from './Quadtree';
+import { Style } from '../lib/Style';
 
 export class Point {
   public x: number;

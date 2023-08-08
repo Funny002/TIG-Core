@@ -10,7 +10,7 @@ export class Quadtree {
   public parent?: Quadtree = undefined;
   private destroy?: NodeJS.Timeout = null;
   protected children: Array<Quadtree> = [];
-  private bounding: { top: number; left: number; bottom: number; width: number; right: number; height: number };
+  private readonly bounding: { top: number; left: number; bottom: number; width: number; right: number; height: number };
 
   constructor(left: number, top: number, width: number, height: number, capacity = 3, maxNode = 10) {
     this.maxNode = maxNode;
@@ -41,10 +41,18 @@ export class Quadtree {
     return this.children[index];
   }
 
+  public hasScope(shape: Shape) {
+    const { top, left, right, bottom } = shape.bounding;
+    if (right > this.bounding.left) return false;
+    if (left > this.bounding.right) return false;
+    if (top > this.bounding.bottom) return false;
+    if (bottom > this.bounding.top) return false;
+    return true;
+  }
+
   // TODO: 插入元素
   public insert(shape: Shape): void {
-    const { top, left, right, bottom } = shape.bounding;
-    if (right > this.bounding.left || left > this.bounding.right || top > this.bounding.bottom || bottom > this.bounding.top) return;
+    if (!this.hasScope(shape)) return;
     if (this.destroy) {
       clearTimeout(this.destroy);
       this.destroy = null;
@@ -76,7 +84,7 @@ export class Quadtree {
     const shape = this.root.splice(index, 1)[0];
     shape.parent = undefined;
     shape.index = -1;
-    this.destroy = setTimeout(() => this.parent.removeQuadtreeChild(this));
+    this.destroy = setTimeout(() => this.parent.removeQuadtreeChild(this), 1000);
   }
 
   // TODO: 子项调用删除节点
@@ -105,5 +113,20 @@ export class Quadtree {
       index = y < horizontal ? 1 : 3;
     }
     return target.concat(this.children[index] ? this.children[index].isPointInShape(x, y) : []);
+  }
+
+  // TODO: 图形检测 - 获取碰撞的图形
+  public crashDetection(shape: Shape): Shape[] {
+    if (!this.hasScope(shape)) return;
+    const target: Shape[] = [];
+    for (const child of this.root) {
+      if (child.crashDetection(shape)) {
+        target.push(child);
+      }
+    }
+    for (const tree of this.children.filter(Boolean)) {
+      target.push(...tree.crashDetection(shape));
+    }
+    return target;
   }
 }
