@@ -41,7 +41,6 @@ export abstract class Shape {
   public index: number = -1;
   public visible: boolean = true;
   public selected: boolean = true;
-  public readonly style: Style = new Style();
   public parent?: Shape | Quadtree = undefined;
   public readonly update: (status?: boolean) => void;
 

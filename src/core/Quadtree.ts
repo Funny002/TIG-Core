@@ -41,6 +41,7 @@ export class Quadtree {
     return this.children[index];
   }
 
+  // TODO: 图形盒检测
   public hasScope(shape: Shape) {
     const { top, left, right, bottom } = shape.bounding;
     if (right > this.bounding.left) return false;
@@ -128,5 +129,11 @@ export class Quadtree {
       target.push(...tree.crashDetection(shape));
     }
     return target;
+  }
+
+  // TODO: 绘画
+  public draw(content: CanvasRenderingContext2D) {
+    this.root.forEach((shape) => shape.draw(content));
+    this.children.filter(Boolean).forEach((tree) => tree.draw(content));
   }
 }

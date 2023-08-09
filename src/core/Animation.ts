@@ -57,16 +57,19 @@ export class Animation {
     this.last.records = time;
   }
 
+  // TODO: 绑定事件
   public on(key: 'FPS' | 'RealTimeFPS', listener: (fps: number) => void) {
     if (!['FPS', 'RealTimeFPS'].includes(key)) throw new Error('Invalid listener type');
     this.listener.subscribe(key, listener);
   }
 
+  // TODO: 解绑事件
   public off(key: 'FPS' | 'RealTimeFPS', listener: (fps: number) => void) {
     if (!['FPS', 'RealTimeFPS'].includes(key)) throw new Error('Invalid listener type');
     this.listener.unsubscribe(key, listener);
   }
 
+  // TODO: 开始
   public run(listener: () => void) {
     this.status = true;
     let last = getTime();
@@ -86,7 +89,7 @@ export class Animation {
     AnimationFrame(newListener);
   }
 
-  // stop animation in next frame to avoid the current frame being rendered
+  // TODO: 暂停，阻止下一帧的运行
   public stop() {
     this.status = false;
   }

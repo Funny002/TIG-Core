@@ -24,42 +24,52 @@
 
 ### 属性
 
-|     名称      |               类型                | 只读 |          默认值          |      说明      |
-|:-----------:|:-------------------------------:|----|:---------------------:|:------------:|
-|   bitmap    |            ImageData            | 是  |       undefined       |     像素数据     | 
-|  children   |      Array<Shape\| Point>       | 是  |          []           |      子项      | 
-|    size     | { width:number; height:number } | 是  | { width:0, height:0 } |      大小      | 
-|     top     |             number              | 否  |           0           | top?.y  距离顶部 | 
-|    left     |             number              | 否  |           0           | left?.x 距离左侧 | 
-|    index    |             number              | 否  |          -1           |   相当于父级索引    |
-|   parent    |              Shape              | 否  |       undefined       |      父级      | 
-|   visible   |             boolean             | 否  |         true          |     是否可见     | 
-|  selected   |             boolean             | 否  |         true          |    是否可选中     | 
-|    style    |              Style              | 否  |         Style         |      样式      | 
-|  bounding   |            Bounding             | 否  |       Bounding        |      边框      | 
-|    click    |   (event:MouseEvent): boolean   | 否  |       undefined       |      点击      | 
-|  dblclick   |   (event:MouseEvent): boolean   | 否  |       undefined       |      双击      | 
-| contextmenu |   (event:MouseEvent): boolean   | 否  |       undefined       |      右击      | 
+|    名称    |               类型                | 只读 |          默认值          |      说明      |
+|:--------:|:-------------------------------:|----|:---------------------:|:------------:|
+|  bitmap  |            ImageData            | 是  |       undefined       |     像素数据     | 
+| children |      Array<Shape\| Point>       | 是  |          []           |      子项      | 
+|   size   | { width:number; height:number } | 是  | { width:0, height:0 } |      大小      | 
+|   top    |             number              | 否  |           0           | top?.y  距离顶部 | 
+|   left   |             number              | 否  |           0           | left?.x 距离左侧 | 
+|  index   |             number              | 否  |          -1           |   相当于父级索引    |
+|  parent  |              Shape              | 否  |       undefined       |      父级      | 
+| visible  |             boolean             | 否  |         true          |     是否可见     | 
+| selected |             boolean             | 否  |         true          |    是否可选中     | 
+| bounding |            Bounding             | 否  |       Bounding        |      边框      | 
 
 ### 方法
 
 > ps: 部分方法并不是直接给 Shape 抽象类使用的，而是为了继承的子类提供方法
 
-|       名称       |                        参数                         |         说明         |
-|:--------------:|:-------------------------------------------------:|:------------------:|
-|     update     |                     (): void                      |        更新图形        |
-|     remove     |                     (): void                      |     调用父节点的删除子项     |
-| crashDetection |              (shape: Shape): boolean              |       像素碰撞检测       |
-|    destroy     |              (status?:boolean): void              | 销毁，传入 true 将子项一起销毁 |
-|      push      |           (shape: Shape \| Point): void           |       向后添加内容       |
-|    unshift     |           (shape: Shape \| Point): void           |       向前添加内容       |
-|   startDraw    |       (ctx:CanvasRenderingContext2D): void        |     将图形复制到画布上      |
-|  removeChild   |   (index: number): Shape \| Point \| undefined    |        删除子项        |
-| isPointInShape | (x: number, y: number): Shape     \|    undefined |    判断坐标是否在图形上方     |
+| 名称             | 参数                                                                    | 说明                 |
+|:---------------|:----------------------------------------------------------------------|:-------------------|
+| update         | (): void                                                              | 更新图形               |
+| remove         | (): void                                                              | 调用父节点的删除子项         |
+| crashDetection | (shape: Shape): boolean                                               | 像素碰撞检测             |
+| destroy        | (status?:boolean): void                                               | 销毁，传入 true 将子项一起销毁 |
+| push           | (shape: Shape \| Point): void                                         | 向后添加内容             |
+| unshift        | (shape: Shape \| Point): void                                         | 向前添加内容             |
+| startDraw      | (ctx:CanvasRenderingContext2D): void                                  | 将图形复制到画布上          |
+| removeChild    | (index: number): Shape \| Point \| undefined                          | 删除子项               |
+| isPointInShape | (x: number, y: number): Shape     \|    undefined                     | 判断坐标是否在图形上方        |
+| on             | (key:string, (data: { graphics: Shape[], event: MouseEvent } => void) | 绑定事件               |
+| off            | (key:string, (data: { graphics: Shape[], event: MouseEvent } => void) | 解绑事件               |
+
+### 事件
+
+|     名称      |              类型              | 只读 |    默认值    |  说明  |
+|:-----------:|:----------------------------:|----|:---------:|:----:|
+|    click    | (event: MouseEvent): boolean | 否  | undefined |  点击  | 
+|  dblclick   | (event: MouseEvent): boolean | 否  | undefined |  双击  | 
+| contextmenu | (event: MouseEvent): boolean | 否  | undefined |  右击  | 
+|  mousedown  | (event: MouseEvent): boolean | 否  | undefined | 鼠标按下 |
+|   mouseup   | (event: MouseEvent): boolean | 否  | undefined | 鼠标抬起 |
+|  mousemove  | (event: MouseEvent): boolean | 否  | undefined | 鼠标移动 |
 
 ## 衍生子类
 
 > ps: 以下子类都是继承自 Shape 抽象类，可以直接使用
+>
 
 ### ShapeItem 抽象类
 
