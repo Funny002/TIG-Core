@@ -37,7 +37,7 @@ export class Create {
 
   // TODO: 画布运行
   public run() {
-    this.animation.run(this.canvas.draw);
+    this.animation.run(() => this.canvas.draw());
   }
 
   // TODO: 画布暂停

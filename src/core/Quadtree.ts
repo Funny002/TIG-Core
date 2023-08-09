@@ -44,10 +44,10 @@ export class Quadtree {
   // TODO: 图形盒检测
   public hasScope(shape: Shape) {
     const { top, left, right, bottom } = shape.bounding;
-    if (right > this.bounding.left) return false;
+    if (right < this.bounding.left) return false;
     if (left > this.bounding.right) return false;
     if (top > this.bounding.bottom) return false;
-    if (bottom > this.bounding.top) return false;
+    if (bottom < this.bounding.top) return false;
     return true;
   }
 
@@ -97,10 +97,10 @@ export class Quadtree {
   };
 
   // TODO: 图形检测 - 获取全部匹配的图形
-  public isPointInShape(x: number, y: number): Shape[] | undefined {
+  public isPointInShape(x: number, y: number): Shape[] {
     const { top, left, right, bottom } = this.bounding;
+    if (x < left || x > right || y < top || y > bottom) return [];
     const target: Shape[] = [];
-    if (x < left || x > right || y < bottom || y > top) return target;
     const { root, vertical, horizontal } = this;
     for (const shape of root) {
       if (shape.visible && shape.isPointInShape(x, y)) {

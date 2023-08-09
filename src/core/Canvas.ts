@@ -16,7 +16,7 @@ export type ListenerTypes = 'click' | 'dblclick' | 'contextmenu' | 'mousemove' |
 
 export class Canvas {
   public graphics: Quadtree;
-  private selected?: Shape[] = undefined;
+  private selected?: Shape[] = [];
   private readonly options: CanvasOptions;
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;

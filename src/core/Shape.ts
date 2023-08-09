@@ -1,9 +1,7 @@
 import { bitmapCollide, getPixel } from '../lib/collides';
 import { Listener } from '../lib/Listener';
-import { throttle } from '../utils/limit';
 import { Watch } from '../lib/Decorators';
 import { Quadtree } from './Quadtree';
-import { Style } from '../lib/Style';
 
 export class Point {
   public x: number;
@@ -86,8 +84,8 @@ export abstract class Shape {
     return this._children;
   }
 
-  protected constructor(timeout = 10) {
-    this.update = throttle(this.handleBitmap.bind(this), timeout);
+  protected constructor() {
+    this.update = this.handleBitmap.bind(this);
   }
 
   // TODO: 图形绘画，由子类实现
@@ -160,7 +158,7 @@ export abstract class Shape {
   public isPointInShape(x: number, y: number): Shape | undefined {
     if (!this.selected) return undefined;
     const { top, left, right, bottom } = this.bounding;
-    if (x < left || y < top || x > right || y > bottom) return undefined;
+    if (x < left || x > right || y < top || y > bottom) return undefined;
     if (this.bitmap) {
       const pixel = getPixel(this.bitmap, x - left, y - top);
       if (pixel.length === 4) {
