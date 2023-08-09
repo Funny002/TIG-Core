@@ -24,6 +24,8 @@ export class Point {
 
 export type ShapeListener = { graphics: Shape, value?: number }
 
+export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mousedown' | 'mouseup';
+
 export abstract class Shape {
   @Watch<number>(function (value) {
     this['listener']?.publish('top', { graphics: this, value });
@@ -33,27 +35,28 @@ export abstract class Shape {
   }) public left: number = 0;
   private _bitmap?: ImageData = undefined;
   protected _children: (Shape | Point)[] = [];
-  private listener: Listener<ShapeListener> = new Listener();
+  private listener: Listener<ShapeListener | MouseEvent> = new Listener();
   protected graphs: HTMLCanvasElement = document.createElement('canvas');
   //
   public index: number = -1;
   public visible: boolean = true;
   public selected: boolean = true;
-  public dragging: boolean = false;
   public readonly style: Style = new Style();
   public parent?: Shape | Quadtree = undefined;
-  public click?: (event: MouseEvent) => boolean;
-  public dblclick?: (event: MouseEvent) => boolean;
   public readonly update: (status?: boolean) => void;
-  public contextmenu?: (event: MouseEvent) => boolean;
+
+  // TODO: 通知
+  public publish(key: ShapeKeys, event: MouseEvent) {
+    this.listener.publish(key, event);
+  }
 
   // TODO: 监听
-  public on(key: 'top' | 'left' | 'update', listener: (value: any) => void) {
+  public on(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
     this.listener.subscribe(key, listener);
   }
 
   // TODO: 取消监听
-  public off(key: 'top' | 'left' | 'update', listener: (value: any) => void) {
+  public off(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
     this.listener.unsubscribe(key, listener);
   }
 
@@ -156,6 +159,7 @@ export abstract class Shape {
 
   // TODO: 判断当前点是否在图形内
   public isPointInShape(x: number, y: number): Shape | undefined {
+    if (!this.selected) return undefined;
     const { top, left, right, bottom } = this.bounding;
     if (x < left || y < top || x > right || y > bottom) return undefined;
     if (this.bitmap) {
@@ -220,6 +224,7 @@ export class ShapeGroup extends Shape {
   }
 
   public isPointInShape(x: number, y: number): Shape | undefined {
+    if (!this.selected) return undefined;
     if (!this.through) return super.isPointInShape(x, y);
     ;[x, y] = [x - this.left, y - this.top];
     for (let i = this.children.length - 1; i >= 0; i--) {

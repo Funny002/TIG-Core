@@ -54,7 +54,10 @@
 // }
 
 export * from './core/Shape';
+export * from './core/Canvas';
+export * from './core/Quadtree';
 export * from './core/Animation';
-// export * from './lib/Style';
-// export * from './lib/Color';
+//
+export * from './lib/Style';
+export * from './lib/Color';
 export * from './lib/Graphics';
