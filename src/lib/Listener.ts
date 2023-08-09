@@ -9,7 +9,7 @@ export class Listener<T = any> {
     }
     this.topics[topic].push(listener);
   }
-
+  
   public unsubscribe(topic: string, listener: EventListener<T>) {
     const topicListeners = this.topics[topic];
     if (topicListeners) {

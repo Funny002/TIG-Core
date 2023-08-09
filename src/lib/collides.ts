@@ -1,8 +1,14 @@
 import { Shape, Point } from '../core/Shape';
+import { Color } from './Color';
 
-export function getPixel(bitmap: ImageData, x: number, y: number): Uint8ClampedArray {
+export function getPixel(bitmap: ImageData, x: number, y: number) {
   const index = (y * bitmap.width + x) * 4;
   return bitmap.data.slice(index, index + 4);
+}
+
+export function getColor(bitmap: ImageData, x: number, y: number) {
+  const [r, g, b, a] = getPixel(bitmap, x, y);
+  return new Color(`rgba(${ r }, ${ g }, ${ b }, ${ a })`);
 }
 
 // 盒检测

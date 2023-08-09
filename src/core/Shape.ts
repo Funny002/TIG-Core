@@ -1,74 +1,65 @@
 import { bitmapCollide, getPixel } from '../lib/collides';
-import { BoundingBox } from './LooseOctree';
 import { Listener } from '../lib/Listener';
 import { throttle } from '../utils/limit';
+import { Watch } from '../lib/Decorators';
+import { Quadtree } from './Quadtree';
 import { Style } from '../lib/Style';
 
 export class Point {
   public x: number;
   public y: number;
-  public index: number;
   public parent?: Shape;
+  public index: number = -1;
 
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
-    this.index = -1;
   }
 
+  // TODO: 移除当前点
   remove(): void {
     this.parent && this.parent.removeChild(this.index);
   }
 }
 
+export type ShapeListener = { graphics: Shape, value?: number }
+
+export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mousedown' | 'mouseup';
+
 export abstract class Shape {
-  public parent?: Shape;
-  private __top: number = 0;
-  private __left: number = 0;
+  @Watch<number>(function (value) {
+    this['listener']?.publish('top', { graphics: this, value });
+  }) public top: number = 0;
+  @Watch<number>(function (value) {
+    this['listener']?.publish('left', { graphics: this, value });
+  }) public left: number = 0;
+  private _bitmap?: ImageData = undefined;
+  protected _children: (Shape | Point)[] = [];
+  private listener: Listener<ShapeListener | MouseEvent> = new Listener();
+  protected graphs: HTMLCanvasElement = document.createElement('canvas');
+  //
   public index: number = -1;
   public visible: boolean = true;
   public selected: boolean = true;
-  public dragging: boolean = false;
-  public style: Style = new Style();
-  public collision?: (shape: Shape) => void;
-  public click?: (event: MouseEvent) => boolean;
-  public dblclick?: (event: MouseEvent) => boolean;
-  public contextmenu?: (event: MouseEvent) => boolean;
-  //
-  private __bitmap?: ImageData;
-  private saveDraw: boolean = false;
-  protected __children: (Shape | Point)[] = [];
-  private readonly styleCanvas: HTMLCanvasElement;
-  private readonly contentCanvas: HTMLCanvasElement;
+  public parent?: Shape | Quadtree = undefined;
   public readonly update: (status?: boolean) => void;
-  private listener: Listener<{ graphics?: Shape, value: any }> = new Listener();
 
-  get children(): (Shape | Point)[] {
-    return this.__children;
+  // TODO: 通知
+  public publish(key: ShapeKeys, event: MouseEvent) {
+    this.listener.publish(key, event);
   }
 
-  get top() {
-    return this.__top;
+  // TODO: 监听
+  public on(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+    this.listener.subscribe(key, listener);
   }
 
-  set top(value: number) {
-    this.__top = value;
-    this.listener.publish('top', { graphics: this, value });
+  // TODO: 取消监听
+  public off(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+    this.listener.unsubscribe(key, listener);
   }
 
-  get left() {
-    return this.__left;
-  }
-
-  set left(value: number) {
-    this.__left = value;
-    this.listener.publish('left', { graphics: this, value });
-  }
-
-  get bitmap() {
-    return this.__bitmap;
-  }
-
+  // TODO: 大小
   get size() {
     let width = 0;
     let height = 0;
@@ -79,156 +70,175 @@ export abstract class Shape {
     return { width, height };
   }
 
-  getBoundingBox() {
+  // TODO: 图形边界
+  get bounding() {
     const { top, left, size: { width, height } } = this;
-    return new BoundingBox(left, top, left + width, top + height);
+    return { top, left, width, height, right: left + width, bottom: top + height };
   }
 
-  constructor() {
-    this.styleCanvas = document.createElement('canvas');
-    this.contentCanvas = document.createElement('canvas');
-    this.update = throttle(this.handleBitmap.bind(this), 10);
+  // TODO: 位图
+  get bitmap() {
+    return this._bitmap;
   }
 
-  public on(key: 'top' | 'left' | 'size', listener: (value: any) => void) {
-    this.listener.subscribe(key, listener);
+  // TODO: 子项
+  get children(): (Shape | Point)[] {
+    return this._children;
   }
 
-  public off(key: 'top' | 'left' | 'size', listener) {
-    this.listener.unsubscribe(key, listener);
+  protected constructor(timeout = 10) {
+    this.update = throttle(this.handleBitmap.bind(this), timeout);
   }
 
-  abstract draw(context: CanvasRenderingContext2D): void;
+  // TODO: 图形绘画，由子类实现
+  abstract draw(content: CanvasRenderingContext2D): void
 
-  private resetCanvas(key: 'style' | 'content') {
-    const keyMap = { style: 'styleCanvas', content: 'contentCanvas' };
+  // TODO: 绘画最新的图像并处理成位图
+  private handleBitmap() {
     const { width, height } = this.size;
-    if (!keyMap[key]) throw new Error('Invalid key type');
-    const keys = keyMap[key];
-    this[keys].width = width;
-    this[keys].height = height;
-    this[keys].getContext('2d').clearRect(0, 0, width, height);
-  }
-
-  private handleBitmap(status = false) {
-    if (this.saveDraw || status) {
-      this.resetCanvas('content');
-      const context = this.contentCanvas.getContext('2d');
-      this.draw(context);
-      this.saveDraw = false;
+    this.graphs.width = width;
+    this.graphs.height = height;
+    const content = this.graphs.getContext('2d');
+    content.clearRect(0, 0, width, height);
+    //
+    this.draw(content);
+    try {
+      this._bitmap = content.getImageData(0, 0, width, height);
+    } catch (e) {
+      console.warn('无法获取位图');
     }
-    this.resetCanvas('style');
-    const context = this.styleCanvas.getContext('2d');
-    context.drawImage(this.contentCanvas, 0, 0);
-    this.style.draw(context);
-    this.__bitmap = context.getImageData(0, 0, this.size.width, this.size.height);
-    this.listener.publish('left', { graphics: this, value: undefined });
+    this.listener.publish('update', { graphics: this });
   }
 
-  private updateChildrenIndexes(index: number) {
-    const long = this.children.length;
-    for (let i = index; i < long; i++) {
-      this.__children[i].index = index;
+  // TODO: 更新子图形的索引
+  protected updateChildrenIndexes(index: number) {
+    for (let i = index; i < this._children.length; i++) {
+      this._children[i].index = i;
     }
   }
 
-  public add(shape: (Shape | Point)) {
-    shape.index = this.children.length;
-    this.__children.push(shape);
+  // TODO: 根据索引添加子项
+  public addChild(shape: Shape | Point, index?: number) {
     shape.parent = this;
-    this.saveDraw = true;
+    index = index ?? this.children.length;
+    this.children.splice(index, 0, shape);
+    this.updateChildrenIndexes(index);
     this.update();
   }
 
-  public addShift(shape: (Shape | Point)) {
-    shape.index = 0;
-    shape.parent = this;
-    this.__children.unshift(shape);
-    this.updateChildrenIndexes(1);
-    this.saveDraw = true;
-    this.update();
-  }
-
+  // TODO: 移除子图形
   public removeChild(index: number): (Shape | Point) | undefined {
-    if (index >= 0 && index < this.__children.length) {
-      const value = this.__children.splice(index, 1)[0];
-      value.parent = undefined;
+    if (index >= 0 && index < this._children.length) {
+      const child = this._children.splice(index, 1)[0];
+      if (!(child instanceof Point)) child.destroy();
       this.updateChildrenIndexes(index);
+      child.parent = undefined;
       this.update();
-      return value;
+      return child;
     }
     return undefined;
   }
 
-  destroy() {
-    this.styleCanvas.remove();
-    this.contentCanvas.remove();
-  }
-
-  remove() {
-    this.destroy();
-    this.parent && this.parent.removeChild(this.index);
-  }
-
-  removeAll() {
-    for (let i = this.children.length - 1; i >= 0; i--) {
-      this.children[i].parent = undefined;
-      this.children[i].index = -1;
+  // TODO: 销毁当前图形，状态为 true 则递归销毁子图形
+  public destroy(status = false) {
+    this.graphs.remove();
+    for (const child of this.children) {
+      if (status && !(child instanceof Point)) child.destroy(status);
+      child.parent = undefined;
+      child.index = -1;
     }
-    this.__children = [];
-    this.update();
+    this._children = [];
   }
 
-  public startDraw(context: CanvasRenderingContext2D) {
-    context.save();
-    context.drawImage(this.styleCanvas, this.left, this.top);
-    context.restore();
+  // TODO: 移除当前图形
+  public remove() {
+    this.destroy();
+    this.parent && this.parent.removeChild?.(this.index);
   }
 
+  // TODO: 判断当前点是否在图形内
   public isPointInShape(x: number, y: number): Shape | undefined {
-    [x, y] = [x - this.left, y - this.top]; // 坐标修正
-    return (this.bitmap && getPixel(this.bitmap, x, y)[3] !== 0) ? this : undefined;
+    if (!this.selected) return undefined;
+    const { top, left, right, bottom } = this.bounding;
+    if (x < left || y < top || x > right || y > bottom) return undefined;
+    if (this.bitmap) {
+      const pixel = getPixel(this.bitmap, x - left, y - top);
+      if (pixel.length === 4) {
+        if (pixel[3] !== 0) return this;
+      }
+    }
+    return undefined;
   }
 
+  // TODO: 图形碰撞检测
   public crashDetection(shape: Shape) {
     return bitmapCollide(this, shape);
+  }
+
+  // TODO: 开始绘画
+  public startDraw(context: CanvasRenderingContext2D) {
+    context.save();
+    context.translate(this.left, this.top);
+    context.drawImage(this.graphs, 0, 0);
+    context.restore();
+  }
+}
+
+export abstract class ShapeItem extends Shape {
+  get children() {
+    return this._children as Point[];
+  }
+
+  public addChild(child: Point, index?: number) {
+    super.addChild(child, index);
   }
 }
 
 export class ShapeGroup extends Shape {
-  constructor() {
+  public through: boolean = true;
+
+  constructor(through = true) {
     super();
+    this.through = through;
+  }
+
+  get children() {
+    return this._children as Shape[];
   }
 
   get size() {
-    let width = 0;
-    let height = 0;
-    for (const child of this.children as Shape[]) {
-      width += child.left + child.size.width;
-      height += child.top + child.size.height;
+    let [width, height] = [0, 0];
+    for (const child of this.children) {
+      width = Math.max(child.bounding.right, width);
+      height = Math.max(child.bounding.bottom, height);
     }
     return { width, height };
   }
 
-  add(shape: Shape) {
-    super.add(shape);
+  public addChild(shape: Shape, index?: number) {
+    super.addChild(shape, index);
+    shape.on('top', this.update);
+    shape.on('left', this.update);
+    shape.on('update', this.update);
   }
 
-  isPointInShape(x: number, y: number): Shape | undefined {
-    [x, y] = [x - this.left, y - this.top]; // 数值偏差
-    const list = this.children as Shape[];
-    for (let i = list.length - 1; i >= 0; i--) {
-      const { visible, selected, isPointInShape } = list[i];
-      if (visible && selected) {
-        const shape = isPointInShape(x, y);
+  public isPointInShape(x: number, y: number): Shape | undefined {
+    if (!this.selected) return undefined;
+    if (!this.through) return super.isPointInShape(x, y);
+    ;[x, y] = [x - this.left, y - this.top];
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      const child = this.children[i];
+      if (child.visible) {
+        const shape = child.isPointInShape(x, y);
         if (shape) return shape;
       }
     }
     return undefined;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
-    for (const child of (this.children as Shape[])) {
+  public draw(ctx: CanvasRenderingContext2D) {
+    ctx.translate(this.left, this.top);
+    for (const child of this.children) {
       if (child.visible) child.startDraw(ctx);
     }
   }

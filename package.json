@@ -2,10 +2,10 @@
   "name": "tig-core",
   "private": false,
   "license": "MIT",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "TypeScript In Games Core",
   "author": "Funny002<2048412928@qq.com>",
-  "main": "./dist/tig-core.js",
+  "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "repository": {
     "type": "git",
@@ -16,7 +16,8 @@
   },
   "homepage": "https://github.com/Funny002/TIG-Core#readme",
   "scripts": {
-    "build": "tsc && npx webpack"
+    "build": "npx webpack",
+    "build:watch": "npx webpack -w"
   },
   "devDependencies": {
     "@types/color": "^3.0.3",

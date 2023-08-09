@@ -6,25 +6,26 @@ function randomNum(min, max) {
 const syncAwait = (timout = 200) => new Promise(resolve => setTimeout(resolve, timout));
 
 window.addEventListener('load', function init() {
-  const { Create, Line, Point } = window['TigCore'];
-  const canvas = document.getElementById('Canvas');
-  const tig = new Create(canvas, { width: 400, height: 400 });
-  tig.run();
-  tig.on('fps', console.log);
-  let left = 0, top = 0;
-  const line = new Line(new Point(left, top));
-  tig.add(line);
-  (async () => {
-    for (; top < 400 || left < 400;) {
-      top += randomNum(5, 30);
-      left += randomNum(5, 30);
-      line.add(new Point(left, top));
-      await syncAwait(500);
-    }
-    for (; line.top < 400 || line.left < 400;) {
-      line.top += randomNum(5, 30);
-      line.left += randomNum(5, 30);
-      await syncAwait(500);
-    }
-  })();
+  const { Create, Rect, Line, Point } = window['TigCore'];
+  // const canvas = document.getElementById('Canvas');
+  // const core = new Create(canvas, { width: 400, height: 400, throttle: 10 });
+  // core.on('FPS', console.log);
+  // core.run();
+  // const rect = new Rect(new Point(100, 100), 10, 10);
+  // rect.dragging = true;
+  // console.log(rect);
+  // rect.top = 200;
+  // rect.left = 200;
+  // core.add(rect);
+  //
+  // let top = 0, left = 0;
+  // const line = new Line(new Point(left, top), 2);
+  // line.dragging = true;
+  // core.add(line);
+  // const func = setInterval(() => {
+  //   top += randomNum(10, 30);
+  //   left += randomNum(10, 30);
+  //   line.push(new Point(left, top));
+  //   if (left > 400 || top > 400) clearInterval(func);
+  // }, 100);
 });
