@@ -11,8 +11,11 @@ window.addEventListener('load', function init() {
   const core = new Create(canvas, { width: 400, height: 400, throttle: 10 });
   core.on('FPS', console.log);
   core.run();
-  const rect = new Rect(new Point(100, 100), 10, 10);
+  const rect = new Rect(100, 100, 10, 10);
   core.insert(rect);
+
+  const rect_1 = new Rect(10, 10, 10, 10);
+  core.insert(rect_1);
 
   rect.on('mousedown', ({ offsetX: x, offsetY: y }) => {
     console.log('mousedown');
@@ -27,12 +30,11 @@ window.addEventListener('load', function init() {
     }
 
     function onMouseUp(event) {
-      onMouseMove(event);
-      rect.off('mouseup', onMouseUp);
       rect.off('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
     }
 
-    rect.on('mouseup', onMouseUp);
     rect.on('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   });
 });

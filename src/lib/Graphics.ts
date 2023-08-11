@@ -6,8 +6,10 @@ export class Line extends ShapeItem {
     this.update();
   }) public width: number = 1;
 
-  constructor(width = 1) {
+  constructor(top: number, left: number, width = 1) {
     super();
+    this.top = top;
+    this.left = left;
     this.width = width;
   }
 
@@ -34,11 +36,13 @@ export class Rect extends ShapeItem {
     this.update();
   }) public height: number;
 
-  constructor(start: Point, width: number = 1, height: number = 1) {
+  constructor(top: number, left: number, width: number = 1, height: number = 1) {
     super();
+    this.top = top;
+    this.left = left;
     this.width = width;
     this.height = height;
-    this.addChild(start);
+    this.addChild(new Point(0, 0));
   }
 
   get size() {
@@ -51,11 +55,8 @@ export class Rect extends ShapeItem {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const { top, left, width, height } = this;
-    ctx.beginPath();
-    ctx.rect(left, top, width, height);
-    ctx.fill();
-    ctx.stroke();
+    const { width, height } = this;
+    ctx.fillRect(0, 0, width, height);
   }
 }
 

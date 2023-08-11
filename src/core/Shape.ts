@@ -6,17 +6,10 @@ import { Quadtree } from './Quadtree';
 export class Point {
   public x: number;
   public y: number;
-  public parent?: Shape;
-  public index: number = -1;
 
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
-  }
-
-  // TODO: 移除当前点
-  remove(): void {
-    this.parent && this.parent.removeChild(this.index);
   }
 }
 
@@ -25,37 +18,43 @@ export type ShapeListener = { graphics: Shape, value?: number }
 export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mousedown' | 'mouseup';
 
 export abstract class Shape {
-  @Watch<number>(function (value) {
-    this['listener']?.publish('top', { graphics: this, value });
-  }) public top: number = 0;
+  // TODO: 位图
+  private _bitmap?: ImageData = undefined;
+  get bitmap() {
+    return this._bitmap;
+  }
+
+  // TODO: 子项
+  protected _children: (Shape | Point)[] = [];
+  get children(): (Shape | Point)[] {
+    return this._children;
+  }
+
+  // TODO: 位置 - X
   @Watch<number>(function (value) {
     this['listener']?.publish('left', { graphics: this, value });
   }) public left: number = 0;
-  private _bitmap?: ImageData = undefined;
-  protected _children: (Shape | Point)[] = [];
+
+  // TODO: 位置 - Y
+  @Watch<number>(function (value) {
+    this['listener']?.publish('top', { graphics: this, value });
+  }) public top: number = 0;
+
+  // TODO: 监听器
   private listener: Listener<ShapeListener | MouseEvent> = new Listener();
+
+  // TODO: 图形
   protected graphs: HTMLCanvasElement = document.createElement('canvas');
-  //
+  protected context: CanvasRenderingContext2D = this.graphs.getContext('2d');
+
+  // TODO: 索引
   public index: number = -1;
+  // TODO: 可见
   public visible: boolean = true;
+  // TODO: 可选
   public selected: boolean = true;
+  // TODO: 父级
   public parent?: Shape | Quadtree = undefined;
-  public readonly update: (status?: boolean) => void;
-
-  // TODO: 通知
-  public publish(key: ShapeKeys, event: MouseEvent) {
-    this.listener.publish(key, event);
-  }
-
-  // TODO: 监听
-  public on(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
-    this.listener.subscribe(key, listener);
-  }
-
-  // TODO: 取消监听
-  public off(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
-    this.listener.unsubscribe(key, listener);
-  }
 
   // TODO: 大小
   get size() {
@@ -74,84 +73,59 @@ export abstract class Shape {
     return { top, left, width, height, right: left + width, bottom: top + height };
   }
 
-  // TODO: 位图
-  get bitmap() {
-    return this._bitmap;
-  }
-
-  // TODO: 子项
-  get children(): (Shape | Point)[] {
-    return this._children;
-  }
-
-  protected constructor() {
-    this.update = this.handleBitmap.bind(this);
-  }
-
   // TODO: 图形绘画，由子类实现
   abstract draw(content: CanvasRenderingContext2D): void
 
   // TODO: 绘画最新的图像并处理成位图
-  private handleBitmap() {
+  public update() {
     const { width, height } = this.size;
     this.graphs.width = width;
     this.graphs.height = height;
-    const content = this.graphs.getContext('2d');
-    content.clearRect(0, 0, width, height);
-    //
-    this.draw(content);
+    this.context = this.graphs.getContext('2d', { willReadFrequently: true });
+    this.context.clearRect(0, 0, width, height);
+    this.draw(this.context);
     try {
-      this._bitmap = content.getImageData(0, 0, width, height);
+      this._bitmap = this.context.getImageData(0, 0, width, height);
     } catch (e) {
-      console.warn('无法获取位图');
+      this._bitmap = undefined;
     }
     this.listener.publish('update', { graphics: this });
   }
 
-  // TODO: 更新子图形的索引
-  protected updateChildrenIndexes(index: number) {
-    for (let i = index; i < this._children.length; i++) {
-      this._children[i].index = i;
-    }
+  // TODO: 通知
+  public publish(key: ShapeKeys, event: MouseEvent) {
+    this.listener.publish(key, event);
+  }
+
+  // TODO: 监听
+  public on(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+    this.listener.subscribe(key, listener);
+  }
+
+  // TODO: 取消监听
+  public off(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+    this.listener.unsubscribe(key, listener);
   }
 
   // TODO: 根据索引添加子项
   public addChild(shape: Shape | Point, index?: number) {
-    shape.parent = this;
     index = index ?? this.children.length;
     this.children.splice(index, 0, shape);
-    this.updateChildrenIndexes(index);
     this.update();
   }
 
   // TODO: 移除子图形
   public removeChild(index: number): (Shape | Point) | undefined {
     if (index >= 0 && index < this._children.length) {
-      const child = this._children.splice(index, 1)[0];
-      if (!(child instanceof Point)) child.destroy();
-      this.updateChildrenIndexes(index);
-      child.parent = undefined;
-      this.update();
-      return child;
+      return this.children.splice(index, 1)[0];
     }
     return undefined;
   }
 
-  // TODO: 销毁当前图形，状态为 true 则递归销毁子图形
-  public destroy(status = false) {
-    this.graphs.remove();
-    for (const child of this.children) {
-      if (status && !(child instanceof Point)) child.destroy(status);
-      child.parent = undefined;
-      child.index = -1;
-    }
-    this._children = [];
-  }
-
-  // TODO: 移除当前图形
+  // TODO: 移除删除
   public remove() {
-    this.destroy();
-    this.parent && this.parent.removeChild?.(this.index);
+    this.graphs.remove();
+    this.parent?.removeChild(this.index);
   }
 
   // TODO: 判断当前点是否在图形内
@@ -213,11 +187,30 @@ export class ShapeGroup extends Shape {
     return { width, height };
   }
 
+  private updateChildrenIndexes(index: number) {
+    const count = this.children.length;
+    for (let i = index; i < count; i++) {
+      this.children[i].index = i;
+    }
+  }
+
   public addChild(shape: Shape, index?: number) {
+    index = index ?? this.children.length;
+    shape.parent = this;
     super.addChild(shape, index);
+    this.updateChildrenIndexes(index);
     shape.on('top', this.update);
     shape.on('left', this.update);
     shape.on('update', this.update);
+  }
+
+  public removeChild(index: number): Shape | undefined {
+    const child = super.removeChild(index) as Shape | undefined;
+    if (child) {
+      child.index = -1;
+      child.parent = undefined;
+    }
+    return child;
   }
 
   public isPointInShape(x: number, y: number): Shape | undefined {
