@@ -80,11 +80,19 @@ export class Quadtree {
     }
   }
 
+  private updateChildrenIndexes(index: number) {
+    const count = this.root.length;
+    for (let i = index; i < count; i++) {
+      this.root[i].index = i;
+    }
+  }
+
   // TODO:  子项调用删除
   public removeChild(index: number) {
     const shape = this.root.splice(index, 1)[0];
     shape.parent = undefined;
     shape.index = -1;
+    this.updateChildrenIndexes(index);
     this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 1000);
   }
 
@@ -92,8 +100,8 @@ export class Quadtree {
   public removeQuadtreeChild(child: Quadtree) {
     const index = this.children.indexOf(child);
     delete this.children[index]; // 删除节点
-    this.children.filter(Boolean).length === 0 && (this.divided = false); // 如果没有子节点，就不是分裂状态
-    this.root.length === 0 && this.parent && this.parent.removeQuadtreeChild(this); // 如果没有子节点，就删除自己
+    if (this.children.filter(Boolean).length === 0) (this.divided = false); // 如果没有子节点，就不是分裂状态
+    if (this.root.length === 0) this.parent?.removeQuadtreeChild(this); // 如果没有子节点，就删除自己
   };
 
   // TODO: 图形检测 - 获取全部匹配的图形
