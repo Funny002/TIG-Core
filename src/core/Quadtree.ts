@@ -85,7 +85,7 @@ export class Quadtree {
     const shape = this.root.splice(index, 1)[0];
     shape.parent = undefined;
     shape.index = -1;
-    this.destroy = setTimeout(() => this.parent.removeQuadtreeChild(this), 1000);
+    this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 1000);
   }
 
   // TODO: 子项调用删除节点
