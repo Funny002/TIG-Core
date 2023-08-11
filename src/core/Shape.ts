@@ -47,6 +47,12 @@ export abstract class Shape {
   protected graphs: HTMLCanvasElement = document.createElement('canvas');
   protected context: CanvasRenderingContext2D = this.graphs.getContext('2d');
 
+  constructor() {
+    Object.defineProperty(this, '_bitmap', { enumerable: false });
+    Object.defineProperty(this, 'listener', { enumerable: false });
+    Object.defineProperty(this, '_children', { enumerable: false });
+  }
+
   // TODO: 索引
   public index: number = -1;
   // TODO: 可见

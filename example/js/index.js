@@ -18,7 +18,6 @@ window.addEventListener('load', function init() {
   core.insert(rect_1);
 
   rect.on('mousedown', ({ offsetX: x, offsetY: y }) => {
-    console.log('mousedown');
     const state = { x, y };
     const shape = { x: rect.left, y: rect.top };
 
