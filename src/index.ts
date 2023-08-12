@@ -1,8 +1,6 @@
-import { Canvas, CanvasOptions, ListenerTypes } from './core/Canvas';
-import { mergeObjects } from './utils/object';
-import { Animation } from './core/Animation';
-import { Watch } from './lib/Decorators';
-import { Shape } from './core/Shape';
+import { Animation, Canvas, CanvasOptions, ListenerTypes, Shape } from './core';
+import { mergeObjects } from './utils';
+import { Watch } from './lib';
 
 interface Options {
   limitFps: number;
@@ -79,11 +77,6 @@ export class Create {
   }
 }
 
-export * from './core/Shape';
-export * from './core/Canvas';
-export * from './core/Quadtree';
-export * from './core/Animation';
-//
-export * from './lib/Style';
-export * from './lib/Color';
-export * from './lib/Graphics';
+export * from './lib';
+export * from './core';
+export * from './style';

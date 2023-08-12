@@ -5,7 +5,8 @@
     "outDir": "./dist",
     "declaration": true,
     "declarationDir": "./types",
-    "experimentalDecorators": true,
+    "moduleResolution": "nodenext",
+    "experimentalDecorators": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "types"],

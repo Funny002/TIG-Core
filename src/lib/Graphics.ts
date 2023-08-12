@@ -1,4 +1,4 @@
-import { Point, ShapeItem } from '../core/Shape';
+import { Point, ShapeItem } from '../core';
 import { Watch } from './Decorators';
 
 export class Line extends ShapeItem {

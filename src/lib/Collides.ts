@@ -1,5 +1,5 @@
-import { Shape, Point } from '../core/Shape';
-import { Color } from './Color';
+import { Shape, Point } from '../core';
+import { Color } from '../style';
 
 export function getPixel(bitmap: ImageData, x: number, y: number) {
   const index = (y * bitmap.width + x) * 4;
