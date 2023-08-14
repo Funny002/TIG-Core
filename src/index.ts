@@ -77,6 +77,6 @@ export class Create {
   }
 }
 
-export * from './lib';
-export * from './core';
 export * from './style';
+export * from './core';
+export * from './lib';

@@ -1,4 +1,5 @@
-import { Listener, Watch } from '../lib';
+import { Listener } from '../lib/Listener';
+import { Watch } from '../lib/Decorators';
 
 const AnimationFrame = (function (win: any) {
   return window['requestAnimationFrame'] ||

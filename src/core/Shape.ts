@@ -1,4 +1,6 @@
-import { bitmapCollide, getPixel, Listener, Watch } from '../lib';
+import { bitmapCollide, getPixel } from '../lib/Collides';
+import { Listener } from '../lib/Listener';
+import { Watch } from '../lib/Decorators';
 import { Quadtree } from './Quadtree';
 
 export class Point {

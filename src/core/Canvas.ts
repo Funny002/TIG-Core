@@ -1,7 +1,7 @@
 import { mergeObjects, throttle } from '../utils';
+import { Listener } from '../lib/Listener';
 import { Shape, ShapeKeys } from './Shape';
 import { Quadtree } from './Quadtree';
-import { Listener } from '../lib';
 
 export interface CanvasOptions {
   width: number;
