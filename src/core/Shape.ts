@@ -3,8 +3,12 @@ import { Listener } from '../lib/Listener';
 import { Watch } from '../lib/Decorators';
 import { Quadtree } from './Quadtree';
 
+// TODO: 位置
 export class Point {
+  // TODO: 位置 - X
   public x: number;
+
+  // TODO: 位置 - Y
   public y: number;
 
   constructor(x: number, y: number) {
@@ -17,6 +21,7 @@ export type ShapeListener = { graphics: Shape, value?: number }
 
 export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mousedown' | 'mouseup';
 
+// TODO: 图形
 export abstract class Shape {
   // TODO: 位图
   private _bitmap?: ImageData = undefined;
@@ -55,10 +60,13 @@ export abstract class Shape {
 
   // TODO: 索引
   public index: number = -1;
+
   // TODO: 可见
   public visible: boolean = true;
+
   // TODO: 可选
   public selected: boolean = true;
+
   // TODO: 父级
   public parent?: Shape | Quadtree = undefined;
 
@@ -162,6 +170,7 @@ export abstract class Shape {
   }
 }
 
+// TODO: 图形项
 export abstract class ShapeItem extends Shape {
   get children() {
     return this._children as Point[];
@@ -172,6 +181,7 @@ export abstract class ShapeItem extends Shape {
   }
 }
 
+// TODO: 图形组
 export class ShapeGroup extends Shape {
   public through: boolean = true;
 

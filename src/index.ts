@@ -7,10 +7,16 @@ interface Options {
 }
 
 export class Create {
+  // TODO: 画布
   private canvas: Canvas;
+
+  // TODO: 动画
   private animation: Animation;
+
+  // TODO: 画布配置
   private readonly options: Partial<CanvasOptions & Options>;
 
+  // TODO: 限制帧数
   @Watch<number, Create>(function (value) {
     if (this['animation']) this['animation'].limit = value;
   }) limit: number;
@@ -22,6 +28,7 @@ export class Create {
     this.handleCanvas(selectors);
   }
 
+  // TODO: 处理画布
   private handleCanvas(selectors: string | HTMLCanvasElement) {
     if (typeof selectors === 'string') {
       const target = document.querySelector(selectors);

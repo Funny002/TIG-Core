@@ -13,12 +13,24 @@ export interface CanvasOptions {
 
 export type ListenerTypes = 'click' | 'dblclick' | 'contextmenu' | 'mousemove' | 'mousedown' | 'mouseup';
 
+// TODO: 画布
 export class Canvas {
+  // TODO: 图形集合
   public graphics: Quadtree;
+
+  // TODO: 选中的图形
   private selected?: Shape[] = [];
+
+  // TODO: 选项
   private readonly options: CanvasOptions;
+
+  // TODO: 画布
   private readonly canvas: HTMLCanvasElement;
+
+  // TODO: 画布上下文
   private readonly context: CanvasRenderingContext2D;
+
+  // TODO: 监听器
   private listener: Listener<{ graphics?: Shape[], event: MouseEvent }> = new Listener();
 
   constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions>) {
@@ -39,6 +51,7 @@ export class Canvas {
     this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
   }
 
+  // TODO: 发布事件
   private ShapePublish(keys: ShapeKeys, graphics: Shape[], event: MouseEvent) {
     this.listener.publish(keys, { graphics, event });
     for (const shape of graphics) {
@@ -46,28 +59,34 @@ export class Canvas {
     }
   }
 
+  // TODO: 鼠标按下
   private onMouseDown(event: MouseEvent) {
     this.selected = this.graphics.isPointInShape(event.offsetX, event.offsetY);
     this.ShapePublish('mousedown', this.selected, event);
   }
 
+  // TODO: 鼠标移动
   private onMouseMove(event: MouseEvent) {
     this.ShapePublish('mousemove', this.selected, event);
   }
 
+  // TODO: 鼠标抬起
   private onMouseUp(event: MouseEvent) {
     this.onMouseMove(event);
     this.ShapePublish('mouseup', this.selected, event);
   }
 
+  // TODO: 单击
   private onClick(event: MouseEvent) {
     this.ShapePublish('click', this.graphics.isPointInShape(event.offsetX, event.offsetY), event);
   }
 
+  // TODO: 双击
   private onDoubleClick(event: MouseEvent) {
     this.ShapePublish('dblclick', this.graphics.isPointInShape(event.offsetX, event.offsetY), event);
   }
 
+  // TODO: 右键菜单
   private onContextMenu(event: MouseEvent) {
     this.ShapePublish('contextmenu', this.graphics.isPointInShape(event.offsetX, event.offsetY), event);
   }

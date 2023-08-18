@@ -1,15 +1,35 @@
 import { Shape } from './Shape';
 
+// TODO: 四叉树
 export class Quadtree {
+  // TODO: 根节点
   protected root: Shape[] = [];
+
+  // TODO: 是否分裂
   private divided: boolean = false;
+
+  // TODO: 最大节点数
   private readonly maxNode: number;
+
+  // TODO: 最大容量
   private readonly capacity: number;
+
+  // TODO: 中心点
   private readonly vertical: number;
+
+  // TODO: 中心点
   private readonly horizontal: number;
+
+  // TODO: 父节点
   public parent?: Quadtree = undefined;
+
+  // TODO: 销毁定时器
   private destroy?: NodeJS.Timeout = null;
+
+  // TODO: 子节点
   protected children: Array<Quadtree> = [];
+
+  // TODO: 包围盒
   private readonly bounding: { top: number; left: number; bottom: number; width: number; right: number; height: number };
 
   constructor(left: number, top: number, width: number, height: number, capacity = 3, maxNode = 10) {
@@ -30,6 +50,7 @@ export class Quadtree {
     return -1;
   }
 
+  // TODO: 创建子节点
   private createChildren(index: 0 | 1 | 2 | 3) {
     if (!this.children[index]) {
       const width = this.bounding.width / 2;
@@ -80,6 +101,7 @@ export class Quadtree {
     }
   }
 
+  // TODO: 更新子项索引
   private updateChildrenIndexes(index: number) {
     const count = this.root.length;
     for (let i = index; i < count; i++) {
@@ -126,7 +148,7 @@ export class Quadtree {
 
   // TODO: 图形检测 - 获取碰撞的图形
   public crashDetection(shape: Shape): Shape[] {
-    if (!this.hasScope(shape)) return;
+    if (!this.hasScope(shape)) return [];
     const target: Shape[] = [];
     for (const child of this.root) {
       if (child.crashDetection(shape)) {

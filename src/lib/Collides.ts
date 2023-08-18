@@ -1,22 +1,24 @@
 import { Shape, Point } from '../core/Shape';
 import { Color } from '../style/color';
 
+// TODO: 获取颜色 - Array
 export function getPixel(bitmap: ImageData, x: number, y: number) {
   const index = (y * bitmap.width + x) * 4;
   return bitmap.data.slice(index, index + 4);
 }
 
+// TODO: 获取颜色 - Color
 export function getColor(bitmap: ImageData, x: number, y: number) {
   const [r, g, b, a] = getPixel(bitmap, x, y);
   return new Color(`rgba(${ r }, ${ g }, ${ b }, ${ a })`);
 }
 
-// 盒检测
+// TODO: 盒检测
 export function boxCollide(p1: Shape, p2: Shape) {
   return (p1.left < p2.left + p2.size.width && p1.left + p1.size.width > p2.left && p1.top < p2.top + p2.size.height && p1.top + p1.size.height > p2.top);
 }
 
-// 圆检测
+// TODO: 圆检测
 function circleCollide(p1: Shape, p2: Shape) {
   if (!boxCollide(p1, p2)) return false;
   const [x1, y1, r1] = [p1.left + p1.size.width / 2, p1.top + p1.size.height / 2, p1['radius']];
@@ -25,7 +27,7 @@ function circleCollide(p1: Shape, p2: Shape) {
   return (r1 + r2) > Math.sqrt(x * x + y * y);
 }
 
-// 多边形检测
+// TODO: 多边形检测
 function polygonCollide(p1: Shape, p2: Shape) {
   if (!boxCollide(p1, p2)) return false;
   const p1_points = [...p1.children as Point[]].map(v => ({ x: v.x + p1.left, y: v.y + p1.top }));
@@ -48,7 +50,7 @@ function polygonCollide(p1: Shape, p2: Shape) {
   return false;
 }
 
-// 像素检测
+// TODO: 像素检测
 export function bitmapCollide(p1: Shape, p2: Shape) {
   if (!boxCollide(p1, p2)) return false;
   const [p1_bit, p2_bit] = [p1.bitmap, p2.bitmap];

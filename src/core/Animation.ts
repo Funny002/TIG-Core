@@ -1,23 +1,22 @@
+import { AnimationFrame, getTime } from '../utils';
 import { Listener } from '../lib/Listener';
 import { Watch } from '../lib/Decorators';
 
-const AnimationFrame = (function (win: any) {
-  return window['requestAnimationFrame'] ||
-    win['webkitRequestAnimationFrame'] ||
-    win['mozRequestAnimationFrame'] ||
-    win['oRequestAnimationFrame'] ||
-    win['msRequestAnimationFrame'] ||
-    ((callback: () => void) => win.setTimeout(() => callback()));
-})(window) as ((func: () => void) => void);
-
-const getTime = () => window.performance?.now() || Date.now();
-
+// TODO: 帧动画
 export class Animation {
-  private count = 0;
-  private status: boolean;
+  // TODO: 帧
+  private count: number = 0;
+
+  // TODO: 状态
+  private status: boolean = false;
+
+  // TODO: 上一次的时间
   private last = { fps: 0, records: 0 };
+
+  // TODO: 监听器
   private listener: Listener<number> = new Listener();
-  //
+
+  // TODO: 限制帧数
   @Watch<number>(function (value, lest) {
     try {
       if (isNaN(value)) throw new Error('FPS must be a number');
