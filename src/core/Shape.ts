@@ -158,9 +158,9 @@ export abstract class Shape {
 
   // TODO: 图形碰撞检测
   public crashDetection(shape: Shape) {
-    return bitmapCollide(this, shape);
+    return this.selected ? bitmapCollide(this, shape) : false;
   }
-
+  
   // TODO: 开始绘画
   public startDraw(context: CanvasRenderingContext2D) {
     context.save();
