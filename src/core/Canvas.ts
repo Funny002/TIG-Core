@@ -37,9 +37,8 @@ export class Canvas {
     this.canvas = typeof selectors === 'string' ? document.querySelector(selectors) : selectors;
     this.options = mergeObjects({ width: 340, height: 300, timout: 0, capacity: 4, maxTreeNode: 10 }, options || {});
     const { width, height, capacity, maxTreeNode, timout } = this.options;
-    this.canvas.width = width;
-    this.canvas.height = height;
     this.context = this.canvas.getContext('2d');
+    this.handlerCanvas();
     this.graphics = new Quadtree(0, 0, width, height, capacity, maxTreeNode);
     // 事件监听
     this.canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), timout));
@@ -49,6 +48,27 @@ export class Canvas {
     this.canvas.addEventListener('click', this.onClick.bind(this));
     this.canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
     this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
+  }
+
+  // TODO: 获取像素比
+  private getPixelRatio() {
+    const backingStore = this.context['backingStorePixelRatio'] ||
+      this.context['webkitBackingStorePixelRatio'] ||
+      this.context['mozBackingStorePixelRatio'] ||
+      this.context['msBackingStorePixelRatio'] ||
+      this.context['oBackingStorePixelRatio'] ||
+      this.context['backingStorePixelRatio'] || 1;
+    return (window.devicePixelRatio || 1) / backingStore;
+  }
+
+  // TODO: 处理画布
+  private handlerCanvas() {
+    const ratio = this.getPixelRatio();
+    const { width, height } = this.canvas;
+    //
+    this.canvas.width = width * ratio;
+    this.canvas.height = height * ratio;
+    this.context.scale(ratio, ratio);
   }
 
   // TODO: 发布事件
