@@ -44,19 +44,21 @@ export class GraphsCanvas {
 
   // TODO: 像素比
   get ratio() {
-    const backingStore = this.context['backingStorePixelRatio'] ||
-      this.context['webkitBackingStorePixelRatio'] ||
-      this.context['mozBackingStorePixelRatio'] ||
-      this.context['msBackingStorePixelRatio'] ||
-      this.context['oBackingStorePixelRatio'] ||
-      this.context['backingStorePixelRatio'] || 1;
-    return (window.devicePixelRatio || 1) / backingStore;
+    return (window.devicePixelRatio || 1) / (function (context: CanvasRenderingContext2D) {
+      if (!context) return 1;
+      return context['backingStorePixelRatio'] ||
+        context['webkitBackingStorePixelRatio'] ||
+        context['mozBackingStorePixelRatio'] ||
+        context['msBackingStorePixelRatio'] ||
+        context['oBackingStorePixelRatio'] ||
+        context['backingStorePixelRatio'] || 1;
+    })(this.context);
   }
 
   // TODO: 位图
   get bitmap() {
     try {
-      return this.context.getImageData(0, 0, this.width, this.height);
+      return this.context?.getImageData(0, 0, this.width, this.height);
     } catch (e) {
       return null;
     }
@@ -64,6 +66,7 @@ export class GraphsCanvas {
 
   // TODO: 处理画布
   private handlerCanvas() {
+    if (!this.canvas) return;
     const { width, height, ratio } = this;
     this.canvas.height = height * ratio;
     this.canvas.width = width * ratio;
@@ -72,10 +75,10 @@ export class GraphsCanvas {
 
   // TODO: 清除画布
   public clear() {
-    this.context.clearRect(0, 0, this.width, this.height);
+    this.context?.clearRect(0, 0, this.width, this.height);
   }
 
   public remove() {
-    this.canvas.remove();
+    this.canvas?.remove();
   }
 }

@@ -29,6 +29,7 @@ window.addEventListener('load', function init() {
     }
 
     function onMouseUp(event) {
+      console.log(core);
       rect.off('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     }
