@@ -1,6 +1,7 @@
 import { bitmapCollide, getPixel } from '../lib/Collides';
 import { Listener } from '../lib/Listener';
 import { Watch } from '../lib/Decorators';
+import { GraphsCanvas } from '../utils';
 import { Quadtree } from './Quadtree';
 
 // TODO: 位置
@@ -24,10 +25,12 @@ export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mo
 // TODO: 图形
 export abstract class Shape {
   // TODO: 位图
-  private _bitmap?: ImageData = undefined;
   get bitmap() {
-    return this._bitmap;
+    return this.graphs.bitmap;
   }
+
+  // TODO: 图形
+  protected graphs: GraphsCanvas;
 
   // TODO: 子项
   protected _children: (Shape | Point)[] = [];
@@ -48,12 +51,9 @@ export abstract class Shape {
   // TODO: 监听器
   private listener: Listener<ShapeListener | MouseEvent> = new Listener();
 
-  // TODO: 图形
-  protected graphs: HTMLCanvasElement = document.createElement('canvas');
-  protected context: CanvasRenderingContext2D = this.graphs.getContext('2d');
-
   constructor() {
-    Object.defineProperty(this, '_bitmap', { enumerable: false });
+    const { width, height } = this.size;
+    this.graphs = new GraphsCanvas(width, height);
     Object.defineProperty(this, 'listener', { enumerable: false });
     Object.defineProperty(this, '_children', { enumerable: false });
   }
@@ -93,16 +93,10 @@ export abstract class Shape {
   // TODO: 绘画最新的图像并处理成位图
   public update() {
     const { width, height } = this.size;
-    this.graphs.width = width;
     this.graphs.height = height;
-    this.context = this.graphs.getContext('2d', { willReadFrequently: true });
-    this.context.clearRect(0, 0, width, height);
-    this.draw(this.context);
-    try {
-      this._bitmap = this.context.getImageData(0, 0, width, height);
-    } catch (e) {
-      this._bitmap = undefined;
-    }
+    this.graphs.width = width;
+    this.graphs.clear();
+    this.draw(this.graphs.context);
     this.listener.publish('update', { graphics: this });
   }
 
@@ -160,12 +154,12 @@ export abstract class Shape {
   public crashDetection(shape: Shape) {
     return this.selected ? bitmapCollide(this, shape) : false;
   }
-  
+
   // TODO: 开始绘画
   public startDraw(context: CanvasRenderingContext2D) {
     context.save();
     context.translate(this.left, this.top);
-    context.drawImage(this.graphs, 0, 0);
+    context.drawImage(this.graphs.canvas, 0, 0);
     context.restore();
   }
 }

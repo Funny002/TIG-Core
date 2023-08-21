@@ -1,6 +1,6 @@
-import { mergeObjects, throttle } from '../utils';
-import { Listener } from '../lib/Listener';
+import { GraphsCanvas, mergeObjects, throttle } from '../utils';
 import { Shape, ShapeKeys } from './Shape';
+import { Listener } from '../lib/Listener';
 import { Quadtree } from './Quadtree';
 
 export interface CanvasOptions {
@@ -21,54 +21,30 @@ export class Canvas {
   // TODO: 选中的图形
   private selected?: Shape[] = [];
 
-  // TODO: 选项
-  private readonly options: CanvasOptions;
-
   // TODO: 画布
-  private readonly canvas: HTMLCanvasElement;
-
-  // TODO: 画布上下文
-  private readonly context: CanvasRenderingContext2D;
+  private readonly canvas: GraphsCanvas;
 
   // TODO: 监听器
   private listener: Listener<{ graphics?: Shape[], event: MouseEvent }> = new Listener();
 
   constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions>) {
-    this.canvas = typeof selectors === 'string' ? document.querySelector(selectors) : selectors;
-    this.options = mergeObjects({ width: 340, height: 300, timout: 0, capacity: 4, maxTreeNode: 10 }, options || {});
-    const { width, height, capacity, maxTreeNode, timout } = this.options;
-    this.context = this.canvas.getContext('2d');
-    this.handlerCanvas();
+    const { width, height, capacity, maxTreeNode, timout } = mergeObjects({ width: 340, height: 300, timout: 0, capacity: 4, maxTreeNode: 10 }, options || {});
+    this.canvas = new GraphsCanvas(width, height, typeof selectors === 'string' ? document.querySelector(selectors) : selectors);
     this.graphics = new Quadtree(0, 0, width, height, capacity, maxTreeNode);
+    const canvas = this.canvas.canvas;
     // 事件监听
-    this.canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), timout));
-    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+    canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), timout));
+    canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+    canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
     //
-    this.canvas.addEventListener('click', this.onClick.bind(this));
-    this.canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
-    this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
+    canvas.addEventListener('click', this.onClick.bind(this));
+    canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
+    canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
   }
 
-  // TODO: 获取像素比
-  private getPixelRatio() {
-    const backingStore = this.context['backingStorePixelRatio'] ||
-      this.context['webkitBackingStorePixelRatio'] ||
-      this.context['mozBackingStorePixelRatio'] ||
-      this.context['msBackingStorePixelRatio'] ||
-      this.context['oBackingStorePixelRatio'] ||
-      this.context['backingStorePixelRatio'] || 1;
-    return (window.devicePixelRatio || 1) / backingStore;
-  }
-
-  // TODO: 处理画布
-  private handlerCanvas() {
-    const ratio = this.getPixelRatio();
-    const { width, height } = this.canvas;
-    //
-    this.canvas.width = width * ratio;
-    this.canvas.height = height * ratio;
-    this.context.scale(ratio, ratio);
+  // TODO: 像素比
+  get ratio() {
+    return this.canvas.ratio;
   }
 
   // TODO: 发布事件
@@ -123,13 +99,12 @@ export class Canvas {
 
   // TODO: 清空画布
   public clearDraw() {
-    const { width, height } = this.canvas;
-    this.context.clearRect(0, 0, width, height);
+    this.canvas.clear();
   }
 
   // TODO: 绘画
   public draw() {
     this.clearDraw();
-    this.graphics.draw(this.context);
+    this.graphics.draw(this.canvas.context);
   }
 }

@@ -115,15 +115,20 @@ export class Quadtree {
     shape.parent = undefined;
     shape.index = -1;
     this.updateChildrenIndexes(index);
-    this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 1000);
+    // 没有子节点，分裂状态关闭
+    if (this.children.filter(Boolean).length === 0) (this.divided = false);
+    // 父节点没有元素，且没有子节点，申请销毁
+    if (!this.root.length && this.divided) (this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 500));
   }
 
   // TODO: 子项调用删除节点
   public removeQuadtreeChild(child: Quadtree) {
     const index = this.children.indexOf(child);
-    delete this.children[index]; // 删除节点
-    if (this.children.filter(Boolean).length === 0) (this.divided = false); // 如果没有子节点，就不是分裂状态
-    if (this.root.length === 0) this.parent?.removeQuadtreeChild(this); // 如果没有子节点，就删除自己
+    delete this.children[index];
+    // 没有子节点，分裂状态关闭
+    if (this.children.filter(Boolean).length === 0) (this.divided = false);
+    // 父节点没有元素，且没有子节点，申请销毁
+    if (!this.root.length && this.divided) (this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 500));
   };
 
   // TODO: 图形检测 - 获取全部匹配的图形

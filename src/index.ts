@@ -6,6 +6,7 @@ interface Options {
   limitFps: number;
 }
 
+// TODO: 创建
 export class Create {
   // TODO: 画布
   private canvas: Canvas;
@@ -13,23 +14,20 @@ export class Create {
   // TODO: 动画
   private animation: Animation;
 
-  // TODO: 画布配置
-  private readonly options: Partial<CanvasOptions & Options>;
-
   // TODO: 限制帧数
   @Watch<number, Create>(function (value) {
     if (this['animation']) this['animation'].limit = value;
   }) limit: number;
 
   constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions & Options>) {
-    this.options = mergeObjects({ timout: 0, width: 340, height: 300, capacity: 4, limitFps: 0, maxTreeNode: 10 }, options);
-    this.animation = new Animation(this.options.limitFps);
-    this.limit = this.options.limitFps || 0;
-    this.handleCanvas(selectors);
+    const { limitFps, ...Options } = mergeObjects({ timout: 0, width: 340, height: 300, capacity: 4, limitFps: 0, maxTreeNode: 10 }, options);
+    this.animation = new Animation(limitFps);
+    this.handleCanvas(selectors, Options);
+    this.limit = limitFps || 0;
   }
 
   // TODO: 处理画布
-  private handleCanvas(selectors: string | HTMLCanvasElement) {
+  private handleCanvas(selectors: string | HTMLCanvasElement, options: CanvasOptions) {
     if (typeof selectors === 'string') {
       const target = document.querySelector(selectors);
       if (target.nodeName !== 'CANVAS') {
@@ -37,7 +35,7 @@ export class Create {
       }
       selectors = <HTMLCanvasElement>target;
     }
-    this.canvas = new Canvas(selectors, this.options);
+    this.canvas = new Canvas(selectors, options);
   }
 
   // TODO: 画布运行
