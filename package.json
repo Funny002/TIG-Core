@@ -2,7 +2,7 @@
   "name": "tig-core",
   "private": false,
   "license": "MIT",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "TypeScript In Games Core",
   "author": "Funny002<2048412928@qq.com>",
   "main": "./dist/index.js",
@@ -28,5 +28,15 @@
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
   },
-  "include": ["src/**/*.ts", "types/**/*.d.ts", "dist/**/*.js"]
+  "files": [
+    "dist/*",
+    "docs/*",
+    "src/*",
+    "types/*",
+    "*.json",
+    "*.js",
+    "*.md",
+    "LICENSE"
+  ],
+  "include": ["src/**/*.ts"]
 }
