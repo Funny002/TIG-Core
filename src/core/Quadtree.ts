@@ -168,7 +168,7 @@ export class Quadtree {
 
   // TODO: 绘画
   public draw(content: CanvasRenderingContext2D) {
-    this.root.forEach((shape) => shape.startDraw(content));
+    this.root.forEach((shape) => shape.visible && shape.startDraw(content));
     this.children.filter(Boolean).forEach((tree) => tree.draw(content));
   }
 }
