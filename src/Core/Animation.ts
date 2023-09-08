@@ -1,8 +1,18 @@
-import { AnimationFrame, getTime } from '../utils';
-import { Listener } from '../lib/Listener';
-import { Watch } from '../lib/Decorators';
+import { Listener } from '../Lib/Listener';
+import { Watch } from '../Lib/Decorators';
+import { getTime } from '../Utils';
 
-// TODO: 帧动画
+// TODO: 帧动画 - 方法
+export const AnimationFrame = (function (win: any) {
+  return window['requestAnimationFrame'] ||
+    win['webkitRequestAnimationFrame'] ||
+    win['mozRequestAnimationFrame'] ||
+    win['oRequestAnimationFrame'] ||
+    win['msRequestAnimationFrame'] ||
+    ((callback: () => void) => win.setTimeout(() => callback(), 1000 / 60));
+})(window) as ((func: () => void) => void);
+
+// TODO: 帧动画 - 类
 export class Animation {
   // TODO: 帧
   private count: number = 0;

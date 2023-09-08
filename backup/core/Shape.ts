@@ -1,6 +1,6 @@
 import { bitmapCollide, getPixel } from '../lib/Collides';
-import { Listener } from '../lib/Listener';
-import { Watch } from '../lib/Decorators';
+import { Listener } from '../../src/Lib/Listener';
+import { Watch } from '../../src/Lib/Decorators';
 import { GraphsCanvas } from '../utils';
 import { Quadtree } from './Quadtree';
 

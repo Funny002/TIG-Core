@@ -1,4 +1,4 @@
-import { Watch } from '../lib/Decorators';
+import { Watch } from '../../src/Lib/Decorators';
 import { Color } from './color';
 
 // TODO: 描边
