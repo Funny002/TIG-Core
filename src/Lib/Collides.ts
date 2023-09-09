@@ -1,5 +1,5 @@
-import { Shape, Point } from '../core/Shape';
-import { Color } from '../style/color';
+import { Color } from '../Style/Color';
+import { Shape } from '../Core/Shape';
 
 // TODO: 获取颜色 - Array
 export function getPixel(bitmap: ImageData, x: number, y: number) {
@@ -27,29 +27,6 @@ function circleCollide(p1: Shape, p2: Shape) {
   return (r1 + r2) > Math.sqrt(x * x + y * y);
 }
 
-// TODO: 多边形检测
-function polygonCollide(p1: Shape, p2: Shape) {
-  if (!boxCollide(p1, p2)) return false;
-  const p1_points = [...p1.children as Point[]].map(v => ({ x: v.x + p1.left, y: v.y + p1.top }));
-  const p2_points = [...p2.children as Point[]].map(v => ({ x: v.x + p2.left, y: v.y + p2.top }));
-  // 坐标修正
-  const [p1_length, p2_length] = [p1_points.length, p2_points.length];
-  for (let i = 0; i < p1_length; i++) {
-    const [p1_point, p1_next_point] = [p1_points[i], p1_points[(i + 1) % p1_length]];
-    for (let j = 0; j < p2_length; j++) {
-      const [p2_point, p2_next_point] = [p2_points[j], p2_points[(j + 1) % p2_length]];
-      const [p1_x, p1_y, p2_x, p2_y] = [p1_point.x, p1_point.y, p2_point.x, p2_point.y];
-      const [p1_next_x, p1_next_y, p2_next_x, p2_next_y] = [p1_next_point.x, p1_next_point.y, p2_next_point.x, p2_next_point.y];
-      const [p1_x1, p1_y1, p2_x1, p2_y1] = [p1_next_x - p1_x, p1_next_y - p1_y, p2_next_x - p2_x, p2_next_y - p2_y];
-      const [p1_x2, p1_y2, p2_x2, p2_y2] = [p2_x - p1_x, p2_y - p1_y, p1_x - p2_x, p1_y - p2_y];
-      if ((p1_x1 * p1_y2 - p1_x2 * p1_y1) * (p2_x1 * p2_y2 - p2_x2 * p2_y1) > 0) continue;
-      if ((p1_x1 * p2_y2 - p1_x2 * p2_y1) * (p2_x1 * p1_y2 - p2_x2 * p1_y1) > 0) continue;
-      return true;
-    }
-  }
-  return false;
-}
-
 // TODO: 像素检测
 export function bitmapCollide(p1: Shape, p2: Shape) {
   if (!boxCollide(p1, p2)) return false;
@@ -72,3 +49,26 @@ export function bitmapCollide(p1: Shape, p2: Shape) {
   }
   return false;
 }
+
+// // TODO: 多边形检测
+// function polygonCollide(p1: Shape, p2: Shape) {
+//   if (!boxCollide(p1, p2)) return false;
+//   const p1_points = [...p1.children as Point[]].map(v => ({ x: v.x + p1.left, y: v.y + p1.top }));
+//   const p2_points = [...p2.children as Point[]].map(v => ({ x: v.x + p2.left, y: v.y + p2.top }));
+//   // 坐标修正
+//   const [p1_length, p2_length] = [p1_points.length, p2_points.length];
+//   for (let i = 0; i < p1_length; i++) {
+//     const [p1_point, p1_next_point] = [p1_points[i], p1_points[(i + 1) % p1_length]];
+//     for (let j = 0; j < p2_length; j++) {
+//       const [p2_point, p2_next_point] = [p2_points[j], p2_points[(j + 1) % p2_length]];
+//       const [p1_x, p1_y, p2_x, p2_y] = [p1_point.x, p1_point.y, p2_point.x, p2_point.y];
+//       const [p1_next_x, p1_next_y, p2_next_x, p2_next_y] = [p1_next_point.x, p1_next_point.y, p2_next_point.x, p2_next_point.y];
+//       const [p1_x1, p1_y1, p2_x1, p2_y1] = [p1_next_x - p1_x, p1_next_y - p1_y, p2_next_x - p2_x, p2_next_y - p2_y];
+//       const [p1_x2, p1_y2, p2_x2, p2_y2] = [p2_x - p1_x, p2_y - p1_y, p1_x - p2_x, p1_y - p2_y];
+//       if ((p1_x1 * p1_y2 - p1_x2 * p1_y1) * (p2_x1 * p2_y2 - p2_x2 * p2_y1) > 0) continue;
+//       if ((p1_x1 * p2_y2 - p1_x2 * p2_y1) * (p2_x1 * p1_y2 - p2_x2 * p1_y1) > 0) continue;
+//       return true;
+//     }
+//   }
+//   return false;
+// }

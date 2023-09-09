@@ -1,6 +1,6 @@
-import { Stroke } from './stroke';
-import { Shadow } from './shadow';
-import { Color } from './color';
+import { Stroke } from './Stroke';
+import { Shadow } from './Shadow';
+import { Color } from './Color';
 
 export class Mapping {
   protected load = false;

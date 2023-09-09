@@ -1,5 +1,5 @@
-import { Watch } from '../../src/Lib/Decorators';
-import { Color } from './color';
+import { Watch } from '../Lib/Decorators';
+import { Color } from './Color';
 
 // TODO: 描边
 export class Stroke {

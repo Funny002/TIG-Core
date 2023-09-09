@@ -1,5 +1,5 @@
-import { Point, ShapeItem } from '../core/Shape';
-import { Watch } from '../../src/Lib/Decorators';
+import { Point, ShapeItem } from '../Core/Shape';
+import { Watch } from './Decorators';
 
 // TODO: 线
 export class Line extends ShapeItem {
@@ -53,7 +53,7 @@ export class Rect extends ShapeItem {
     this.left = left;
     this.width = width;
     this.height = height;
-    this.addChild(new Point(0, 0));
+    this.addChild({ x: 0, y: 0 });
   }
 
   get size() {

@@ -83,6 +83,6 @@ export class Create {
 }
 
 export * from './utils';
-export * from './style';
+export * from '../src/Style';
 export * from './core';
 export * from './lib';

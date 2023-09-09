@@ -14,10 +14,10 @@ export class Quadtree {
   // TODO: 最大容量
   private readonly capacity: number;
 
-  // TODO: 中心点
+  // TODO: 中心点 - 垂直
   private readonly vertical: number;
 
-  // TODO: 中心点
+  // TODO: 中心点 - 水平
   private readonly horizontal: number;
 
   // TODO: 父节点
@@ -72,6 +72,14 @@ export class Quadtree {
     return true;
   }
 
+  // TODO: 更新子项索引
+  private updateChildrenIndexes(index: number) {
+    const count = this.root.length;
+    for (let i = index; i < count; i++) {
+      this.root[i].parent.setIndex(this, i);
+    }
+  }
+
   // TODO: 插入元素
   public insert(shape: Shape): void {
     if (!this.hasScope(shape)) return;
@@ -79,21 +87,26 @@ export class Quadtree {
       clearTimeout(this.destroy);
       this.destroy = null;
     }
-    shape.parent = this;
-    shape.index = this.root.length;
     if (!this.divided) {
-      this.root.push(shape);
-      if (this.root.length > this.capacity) {
+      if (this.root.length >= this.capacity) {
         this.divided = true;
         const children = this.root.splice(0, this.root.length);
         for (const shape of children) {
+          // TODO: 删除 - 父节点
+          shape.parent.remove(this);
           this.insert(shape);
         }
+      } else {
+        // TODO: 添加 - 父节点
+        shape.parent.add(this, this.root.length);
+        this.root.push(shape);
       }
     } else {
       const index = this.getIndex(shape);
       // TODO: 如果元素不在象限内，直接插入根节点, 或者象限已经达到最大值
       if (index === -1 || !this.maxNode) {
+        // TODO: 添加 - 父节点
+        shape.parent.add(this, this.root.length);
         this.root.push(shape);
       } else {
         this.createChildren(index).insert(shape);
@@ -101,34 +114,31 @@ export class Quadtree {
     }
   }
 
-  // TODO: 更新子项索引
-  private updateChildrenIndexes(index: number) {
-    const count = this.root.length;
-    for (let i = index; i < count; i++) {
-      this.root[i].index = i;
-    }
-  }
-
-  // TODO:  子项调用删除
-  public removeChild(index: number) {
-    const shape = this.root.splice(index, 1)[0];
-    shape.parent = undefined;
-    shape.index = -1;
-    this.updateChildrenIndexes(index);
+  // TODO: 删除元素
+  private hasRemoveQuadtreeChild() {
     // 没有子节点，分裂状态关闭
     if (this.children.filter(Boolean).length === 0) (this.divided = false);
     // 父节点没有元素，且没有子节点，申请销毁
     if (!this.root.length && this.divided) (this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 500));
+  }
+
+  // TODO:  子项调用删除
+  public removeChild(index: number, removeCount = 1) {
+    const childArr = this.root.splice(index, removeCount);
+    if (childArr.length) {
+      for (const child of childArr) {
+        child.parent.remove(this);
+      }
+    }
+    this.updateChildrenIndexes(index);
+    this.hasRemoveQuadtreeChild();
   }
 
   // TODO: 子项调用删除节点
   public removeQuadtreeChild(child: Quadtree) {
     const index = this.children.indexOf(child);
     delete this.children[index];
-    // 没有子节点，分裂状态关闭
-    if (this.children.filter(Boolean).length === 0) (this.divided = false);
-    // 父节点没有元素，且没有子节点，申请销毁
-    if (!this.root.length && this.divided) (this.destroy = setTimeout(() => this.parent?.removeQuadtreeChild(this), 500));
+    this.hasRemoveQuadtreeChild();
   };
 
   // TODO: 图形检测 - 获取全部匹配的图形
@@ -138,9 +148,7 @@ export class Quadtree {
     const target: Shape[] = [];
     const { root, vertical, horizontal } = this;
     for (const shape of root) {
-      if (shape.visible && shape.isPointInShape(x, y)) {
-        target.push(shape);
-      }
+      if (shape.visible) target.push(...shape.isPointInShape(x, y));
     }
     let index: number;
     if (x < vertical) {
@@ -156,19 +164,8 @@ export class Quadtree {
     if (!this.hasScope(shape)) return [];
     const target: Shape[] = [];
     for (const child of this.root) {
-      if (child.crashDetection(shape)) {
-        target.push(child);
-      }
+      target.push(...child.crashDetection(shape));
     }
-    for (const tree of this.children.filter(Boolean)) {
-      target.push(...tree.crashDetection(shape));
-    }
-    return target;
-  }
-
-  // TODO: 绘画
-  public draw(content: CanvasRenderingContext2D) {
-    this.root.forEach((shape) => shape.visible && shape.startDraw(content));
-    this.children.filter(Boolean).forEach((tree) => tree.draw(content));
+    return target.concat(this.children.filter(Boolean).map(tree => tree.crashDetection(shape)).flat());
   }
 }

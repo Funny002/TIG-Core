@@ -1,4 +1,4 @@
-import { Color } from './color';
+import { Color } from './Color';
 
 type offsetX = number;
 type offsetY = number;
