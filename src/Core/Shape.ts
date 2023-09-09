@@ -10,6 +10,7 @@ export type Point = { x: number, y: number; };
 export type ShapeListener = { graphics: Shape, value?: number }
 
 // TODO: 图形键
+type ShapeTypes = 'top' | 'left' | 'update' | 'rotate';
 export type ShapeKeys = 'click' | 'contextmenu' | 'dblclick' | 'mousemove' | 'mousedown' | 'mouseup';
 
 // TODO: 图形 - 父级
@@ -49,8 +50,91 @@ class ShapeParent {
   }
 }
 
+// TODO: 图形 - 旋转
+class ShapeRotate {
+  // TODO: 角度
+  @Watch<number>(function () {
+    this['update']();
+  }) angle: number = 0;
+
+  // TODO: 缓冲区
+  private buffer: CanvasItem | undefined = undefined;
+
+  // TODO: 图形
+  private graphs: CanvasItem | undefined = undefined;
+
+  // TODO: 定时器
+  private timeout: NodeJS.Timeout | undefined = undefined;
+
+  // TODO: 大小
+  public size: { width: number, height: number } | undefined = undefined;
+
+  constructor(graphs: CanvasItem) {
+    this.graphs = graphs;
+  }
+
+  // TODO: 获取大小
+  private getSize(width: number, height: number) {
+    const radian = Math.abs(this.angle) * Math.PI / 180;
+    const [sin, cos] = [Math.sin(radian), Math.cos(radian)];
+    const newWidth = Math.round(width * cos + height * sin);
+    const newHeight = Math.round(width * sin + height * cos);
+    return { width: newWidth, height: newHeight };
+  }
+
+  // TODO: 更新
+  update() {
+    if (!this.buffer) return undefined;
+    const { width, height } = this.buffer;
+
+    // TODO: 改变画布大小
+    const size = this.getSize(width, height);
+    this.graphs.height = size.height;
+    this.graphs.width = size.width;
+    this.size = size;
+
+    // TODO: 旋转画布
+    this.graphs.context.save();
+    this.graphs.context.translate(size.width / 2, size.height / 2);
+    this.graphs.context.rotate(this.angle * Math.PI / 180);
+    this.graphs.context.drawImage(this.buffer.canvas, -width / 2, -height / 2);
+    this.graphs.context.restore();
+  }
+
+  // TODO: 创建
+  create(graphs: CanvasItem) {
+    this.timeout && clearTimeout(this.timeout);
+    const { width, height } = graphs;
+    this.graphs = graphs;
+
+    if (this.buffer) {
+      this.buffer.width = width;
+      this.buffer.height = height;
+    } else {
+      this.buffer = new CanvasItem(width, height);
+    }
+
+    this.buffer.context.drawImage(graphs.canvas, 0, 0);
+
+    this.update();
+  }
+
+  // TODO: 销毁
+  destroy() {
+    if (!this.buffer) return undefined;
+    this.size = undefined;
+    this.timeout = setTimeout(() => {
+      this.buffer?.destroy();
+      this.buffer = undefined;
+      this.timeout = undefined;
+    }, 1000);
+  }
+}
+
 // TODO: 图形
 export abstract class Shape {
+  // TODO: 旋转
+  private rotate: ShapeRotate;
 
   // TODO: 可见
   public visible: boolean = true;
@@ -78,7 +162,17 @@ export abstract class Shape {
   protected listener: Listener<ShapeListener | MouseEvent> = new Listener();
 
   constructor() {
+    this.rotate = new ShapeRotate(this.graphs);
     Object.defineProperty(this, 'listener', { enumerable: false });
+  }
+
+  // TODO: 旋转角度
+  get rotateAngle() {
+    return this.rotate.angle;
+  }
+
+  set rotateAngle(value: number) {
+    this.rotate.angle = value % 360;
   }
 
   // TODO: 画布 - 元素
@@ -101,7 +195,8 @@ export abstract class Shape {
 
   // TODO: 图形边界
   get bounding() {
-    const { top, left, size: { width, height } } = this;
+    const { top, left, size, rotate } = this;
+    const { width, height } = rotate.size || size;
     return { top, left, width, height, right: left + width, bottom: top + height };
   }
 
@@ -111,21 +206,32 @@ export abstract class Shape {
   }
 
   // TODO: 监听
-  public on(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+  public on(key: ShapeTypes | ShapeKeys, listener: (value: any) => void) {
     this.listener.subscribe(key, listener);
   }
 
   // TODO: 取消监听
-  public off(key: 'top' | 'left' | 'update' | ShapeKeys, listener: (value: any) => void) {
+  public off(key: ShapeTypes | ShapeKeys, listener: (value: any) => void) {
     this.listener.unsubscribe(key, listener);
+  }
+
+  // TODO: 更新旋转画布
+  public updateRotate() {
+    if (this.rotateAngle !== 0) {
+      this.rotate.create(this.graphs);
+    } else {
+      this.rotate.destroy();
+    }
   }
 
   // TODO: 刷新画布
   public update() {
     const { width, height } = this.size;
-    this.graphs.height = height;
     this.graphs.width = width;
+    this.graphs.height = height;
     this.draw(this.graphs.context);
+    // TODO: 旋转缓冲区
+    this.updateRotate();
     this.listener.publish('update', { graphics: this });
   }
 
@@ -206,6 +312,7 @@ export class ShapeGroup extends Shape {
     shape.on('top', this.update);
     shape.on('left', this.update);
     shape.on('update', this.update);
+    shape.on('rotate', this.update);
   }
 
   // TODO: 删除子项

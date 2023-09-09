@@ -1,5 +1,5 @@
 // TODO: 监听器
-export function Watch<T, U = any>(listener?: (this: U, value: T, lestValue: T) => void) {
+export function Watch<T, U = any>(listener?: (this: U, value: T, lestValue: T) => void, handler?: (value: T) => T) {
   return function (target: any, name: string) {
     const keys = Symbol(name);
 
@@ -15,7 +15,7 @@ export function Watch<T, U = any>(listener?: (this: U, value: T, lestValue: T) =
 
     function set(value: T) {
       const last = this[keys];
-      this[keys] = value;
+      this[keys] = handler ? handler(value) : value;
       listener && listener.call(this, value, last);
     }
 
