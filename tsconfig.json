@@ -4,10 +4,11 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "declaration": true,
+    "moduleResolution": "node",
     "declarationDir": "./types",
-    "moduleResolution": "nodenext",
+    "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "types"],
+  "include": ["src/*/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "types"]
 }

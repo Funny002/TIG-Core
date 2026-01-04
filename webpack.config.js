@@ -12,7 +12,7 @@ module.exports = {
   },
   module: {
     rules: [{
-      test: /\.tsx?$/, use: 'ts-loader', // TypeScript加载器
+      test: /\.tsx?$/, use: 'ts-loader', // TypeScript 加载器
       exclude: /node_modules/,
     }],
   },

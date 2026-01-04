@@ -19,10 +19,13 @@
     "build": "npx webpack",
     "build:watch": "npx webpack -w"
   },
+  "dependencies": {
+    "color": "^4.2.3",
+    "dayjs": "^1.11.19"
+  },
   "devDependencies": {
     "@types/color": "^3.0.3",
     "@types/node": "^20.4.10",
-    "color": "^4.2.3",
     "ts-loader": "^9.4.4",
     "typescript": "^5.1.6",
     "webpack": "^5.88.2",
@@ -38,5 +41,7 @@
     "*.md",
     "LICENSE"
   ],
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

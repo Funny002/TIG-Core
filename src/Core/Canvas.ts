@@ -1,4 +1,4 @@
-import { getRatio, mergeObjs, throttle } from '../Utils';
+import { getRatio, mergeObj, throttle } from '../Utils';
 import { Listener } from '../Lib/Listener';
 import { Watch } from '../Lib/Decorators';
 
@@ -96,7 +96,7 @@ export class Canvas {
   private listener: Listener<MouseEvent> = new Listener();
 
   constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions>) {
-    const { width, height, timout } = mergeObjs({ width: 340, height: 300, timout: 0 }, options || {});
+    const { width, height, timout } = mergeObj({ width: 340, height: 300, timout: 0 }, options || {});
     this.__canvas = new CanvasItem(width, height, typeof selectors === 'string' ? document.querySelector(selectors) : selectors);
     this.canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), timout));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
