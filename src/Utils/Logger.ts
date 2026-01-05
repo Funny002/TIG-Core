@@ -1,4 +1,4 @@
-import { mergeObj } from './Object';
+import { shallowMerge } from './Object';
 import dayjs from 'dayjs';
 
 // 日志级别枚举
@@ -27,7 +27,7 @@ export class Logger {
   // 构造函数，接受部分配置选项
   constructor(config: Partial<LoggerOptions> = {}) {
     // 合并默认配置和用户配置
-    this.config = mergeObj({
+    this.config = shallowMerge({
       prefix: '',  // 默认前缀为空
       timestamp: true,  // 默认显示时间戳
       level: LoggerLevel.Log,  // 默认日志级别为Log
