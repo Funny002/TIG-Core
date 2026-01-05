@@ -1,11 +1,10 @@
-// @ts-nocheck
-// @ts-ignore
-import * as ColorPlugin from 'color';
+import type { ColorInstance } from 'color';
+import ColorPlugin from 'color';
 
 // TODO: 颜色
 export class Color {
   // TODO: 颜色插件
-  private color: ColorPlugin;
+  private color: ColorInstance;
 
   constructor(value: string | number | object) {
     this.color = new ColorPlugin(value);

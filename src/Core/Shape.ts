@@ -1,6 +1,6 @@
-import { bitmapCollide, getPixel } from '../Lib/Collides';
-import { Listener } from '../Lib/Listener';
-import { Watch } from '../Lib/Decorators';
+import { bitmapCollide, getPixel } from '../Lib';
+import { Listener } from '../Lib';
+import { Watch } from '../Lib';
 import { CanvasItem } from './Canvas';
 
 // TODO: 点
