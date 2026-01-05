@@ -1,4 +1,4 @@
-export * from './Quadtree';
+export * from './QuadTree';
 export * from './Engine';
 
 // export * from './Animation';
