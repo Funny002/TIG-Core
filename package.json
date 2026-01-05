@@ -16,32 +16,26 @@
   },
   "homepage": "https://github.com/Funny002/TIG-Core#readme",
   "scripts": {
-    "build": "npx webpack",
-    "build:watch": "npx webpack -w"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "color": "^4.2.3",
-    "dayjs": "^1.11.19"
+    "color": "^5.0.3",
+    "dayjs": "^1.11.19",
+    "decimal.js": "^10.6.0"
   },
   "devDependencies": {
-    "@types/color": "^3.0.3",
-    "@types/node": "^20.4.10",
-    "ts-loader": "^9.4.4",
-    "typescript": "^5.1.6",
-    "webpack": "^5.88.2",
-    "webpack-cli": "^5.1.4"
+    "typescript": "~5.9.3",
+    "vite": "npm:rolldown-vite@7.1.14"
   },
   "files": [
-    "dist/*",
+    "libs/*",
     "docs/*",
-    "src/*",
     "types/*",
     "*.json",
     "*.js",
     "*.md",
     "LICENSE"
-  ],
-  "include": [
-    "src/**/*.ts"
   ]
 }

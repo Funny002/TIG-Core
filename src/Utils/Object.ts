@@ -3,7 +3,7 @@ export const getTime = () => window.performance?.now() || Date.now();
 
 // TODO: 防抖
 export function debounce(func: any, timeout = 300) {
-  let state: NodeJS.Timeout;
+  let state: number;
   return function (...args: any[]) {
     if (state) clearTimeout(state);
     state = setTimeout(() => func(...args), timeout);
@@ -12,11 +12,11 @@ export function debounce(func: any, timeout = 300) {
 
 // TODO: 节流
 export function throttle(func: any, timeout = 300) {
-  let state: NodeJS.Timeout;
+  let state: number;
   return function (...args: any[]) {
     if (state) return;
     func(...args);
-    state = setTimeout(() => state = undefined, timeout);
+    state = setTimeout(() => state = 0, timeout);
   };
 }
 
@@ -43,18 +43,4 @@ export function mergeObjDeep(...args: { [key: string]: any }[]) {
     }
     return prev;
   }, {});
-}
-
-// TODO: 像素比
-export function getRatio(context: CanvasRenderingContext2D) {
-  return (window.devicePixelRatio || 1) / (
-      (!context && 1) ||
-      context['backingStorePixelRatio'] ||
-      context['webkitBackingStorePixelRatio'] ||
-      context['mozBackingStorePixelRatio'] ||
-      context['msBackingStorePixelRatio'] ||
-      context['oBackingStorePixelRatio'] ||
-      context['backingStorePixelRatio'] ||
-      1
-  );
 }
