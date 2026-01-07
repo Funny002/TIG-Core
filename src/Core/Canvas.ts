@@ -1,12 +1,10 @@
 import { EngineLogger } from '../Logger';
 import { EventEmitter } from '../Lib';
-import { throttle } from '../Utils';
 
 export interface CanvasOptions {
   width: number;
   ratio: number;
   height: number;
-  timeout: number;
   selectors?: string | HTMLCanvasElement;
 }
 
@@ -56,7 +54,7 @@ export class Canvas extends EventEmitter {
   constructor(config: Partial<CanvasOptions> = {}) {
     super();
     this.canvas = this.resolveCanvasElement(config.selectors);
-    this.config = Object.assign({ width: 0, height: 0, ratio: 1, timeout: 200 }, config) as CanvasOptions;
+    this.config = Object.assign({ width: 0, height: 0, ratio: 1 }, config) as CanvasOptions;
     const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
       const msg = 'Canvas 2D 不支持';
@@ -90,15 +88,14 @@ export class Canvas extends EventEmitter {
       let last: MouseEvent & { moveX?: number, moveY?: number } | undefined = undefined;
       this.emit('mousedown', e);
       const { clientX, clientY } = e;
-      const onMouseMove = throttle((e: MouseEvent) => {
+      const onMouseMove = (e: MouseEvent) => {
         last = e;
         last.moveX = e.clientX - clientX;
         last.moveY = e.clientY - clientY;
         this.emit('mousemove', last);
-      }, this.config.timeout);
+      };
       //
       const onMouseUp = () => {
-        this.emit('mousemove', last);
         this.emit('mouseup', last);
         this.canvas.removeEventListener('mouseup', onMouseUp);
         this.canvas.removeEventListener('mousemove', onMouseMove);
