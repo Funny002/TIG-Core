@@ -1,8 +1,3 @@
-import { bitmapCollide, getPixel } from '../Lib';
-import { Listener } from '../Lib';
-import { Watch } from '../Lib';
-import { CanvasItem } from './Canvas';
-
 // TODO: 点
 export type Point = { x: number, y: number; };
 

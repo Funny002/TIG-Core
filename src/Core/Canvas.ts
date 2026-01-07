@@ -1,167 +1,148 @@
-import { getRatio, mergeObj, throttle } from '../Utils';
-import { Listener } from '../Lib/Listener';
-import { Watch } from '../Lib/Decorators';
+import { EngineLogger } from '../Logger';
+import { EventEmitter } from '../Lib';
+import { throttle } from '../Utils';
 
-// TODO: 画布 - 子项
-export class CanvasItem {
-  // TODO: 宽度
-  @Watch<number>(function () {
-    this['handlerCanvas']();
-  }) public width: number;
+export interface CanvasOptions {
+  width: number;
+  ratio: number;
+  height: number;
+  timeout: number;
+  selectors?: string | HTMLCanvasElement;
+}
 
-  // TODO: 高度
-  @Watch<number>(function () {
-    this['handlerCanvas']();
-  }) public height: number;
+export class Canvas extends EventEmitter {
+  private readonly config: CanvasOptions;
+  private readonly canvas: HTMLCanvasElement;
+  private readonly context: CanvasRenderingContext2D;
+  //
+  private __cacheBitmap: ImageData | null = null;
 
-  // TODO: 画布
-  public readonly canvas: HTMLCanvasElement;
+  get width() {
+    return this.config.width;
+  }
 
-  // TODO: 画布上下文
-  public readonly context: CanvasRenderingContext2D;
+  get height() {
+    return this.config.height;
+  }
 
-  constructor(width: number, height: number, canvas?: HTMLCanvasElement) {
-    this.width = width;
-    this.height = height;
-    this.canvas = canvas || document.createElement('canvas');
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+  get ratio() {
+    return this.config.ratio;
+  }
+
+  private handlerValue(key: 'width' | 'height' | 'ratio', value: number) {
+    const state = Number.isFinite(value) && this[key] !== value && value > 0;
+    if (!state) EngineLogger.warn(`${key} 不是有效值 (必须是大于0的有限数字)`);
+    return state;
+  }
+
+  set width(value: number) {
+    if (!this.handlerValue('width', value)) return;
+    this.config.width = value;
     this.handlerCanvas();
   }
 
-  // TODO: 像素比
-  get ratio() {
-    return getRatio(this.context);
+  set height(value: number) {
+    if (!this.handlerValue('height', value)) return;
+    this.config.height = value;
+    this.handlerCanvas();
   }
 
-  // TODO: 处理画布
+  set ratio(value: number) {
+    if (!this.handlerValue('ratio', value)) return;
+    this.config.ratio = value;
+    this.handlerCanvas();
+  }
+
+  constructor(config: Partial<CanvasOptions> = {}) {
+    super();
+    this.canvas = this.resolveCanvasElement(config.selectors);
+    this.config = Object.assign({ width: 0, height: 0, ratio: 1, timeout: 200 }, config) as CanvasOptions;
+    const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+      const msg = 'Canvas 2D 不支持';
+      EngineLogger.error(msg);
+      throw new Error(msg);
+    }
+    this.context = ctx;
+    //
+    this.bindEvents();
+    this.handlerCanvas();
+  }
+
+  private resolveCanvasElement(selectors?: string | HTMLCanvasElement) {
+    if (!selectors) return document.createElement('canvas');
+    if (selectors instanceof HTMLCanvasElement) return selectors;
+    if (typeof selectors === 'string') {
+      const dom = document.querySelector(selectors);
+      if (dom instanceof HTMLCanvasElement) return dom;
+      const msg = `未找到 canvas 元素: ${selectors}`;
+      EngineLogger.error(msg);
+      throw new Error(msg);
+    }
+    //
+    const msg = 'selectors 必须是 CSS 选择器字符串或 HTMLCanvasElement';
+    EngineLogger.error(msg);
+    throw new Error(msg);
+  }
+
+  private bindEvents() {
+    const onMouseDown = (e: MouseEvent) => {
+      let last: MouseEvent & { moveX?: number, moveY?: number } | undefined = undefined;
+      this.emit('mousedown', e);
+      const { clientX, clientY } = e;
+      const onMouseMove = throttle((e: MouseEvent) => {
+        last = e;
+        last.moveX = e.clientX - clientX;
+        last.moveY = e.clientY - clientY;
+        this.emit('mousemove', last);
+      }, this.config.timeout);
+      //
+      const onMouseUp = () => {
+        this.emit('mousemove', last);
+        this.emit('mouseup', last);
+        this.canvas.removeEventListener('mouseup', onMouseUp);
+        this.canvas.removeEventListener('mousemove', onMouseMove);
+      };
+      this.canvas.addEventListener('mouseup', onMouseUp);
+      this.canvas.addEventListener('mousemove', onMouseMove);
+    };
+    this.canvas.addEventListener('mousedown', onMouseDown);
+    //
+    this.canvas.addEventListener('click', (...args) => this.emit('click', ...args));
+    this.canvas.addEventListener('dblclick', (...args) => this.emit('dblclick', ...args));
+    this.canvas.addEventListener('contextmenu', (...args) => this.emit('contextmenu', ...args));
+  }
+
   private handlerCanvas() {
-    if (!this.canvas) return;
-    const { width, height, ratio } = this;
-    this.canvas.height = height * ratio;
-    this.canvas.width = width * ratio;
-    this.context.scale(ratio, ratio);
+    this.__cacheBitmap = null;
+    //
+    this.canvas.width = this.width * this.ratio;
+    this.canvas.height = this.height * this.ratio;
+    this.canvas.style.width = `${this.width}px`;
+    this.canvas.style.height = `${this.height}px`;
+    //
+    this.emit('resize', { width: this.width, height: this.height, ratio: this.ratio });
   }
 
-  // TODO: 位图
-  public getBitmap() {
+  getBitmap() {
     try {
-      return this.context?.getImageData(0, 0, this.width, this.height);
+      if (this.__cacheBitmap) return this.__cacheBitmap;
+      this.__cacheBitmap = this.context.getImageData(0, 0, this.width * this.ratio, this.height * this.ratio);
+      return this.__cacheBitmap;
     } catch (e) {
+      EngineLogger.error(e);
       return null;
     }
   }
 
-  // TODO: 清除画布
-  public clear() {
-    this.context?.clearRect(0, 0, this.width, this.height);
+  clear() {
+    this.__cacheBitmap = null;
+    this.context.clearRect(0, 0, this.width * this.ratio, this.height * this.ratio);
+    this.emit('clear');
   }
 
-  // TODO: 销毁
-  public destroy() {
-    this.canvas?.remove();
-  }
-}
-
-// TODO: 画布参数
-export interface CanvasOptions {
-  width: number;
-  height: number;
-  timout: number;
-}
-
-// TODO: 监听器类型
-export type ListenerTypes = 'click' | 'dblclick' | 'contextmenu' | 'mousemove' | 'mousedown' | 'mouseup';
-
-// TODO: 画布
-export class Canvas {
-  // TODO: 画布 - 类
-  private __canvas: CanvasItem;
-
-  // TODO: 画布 - 像素比
-  get ratio() {
-    return this.__canvas.ratio;
-  }
-
-  // TODO: 画布 - 上下文
-  get context() {
-    return this.__canvas.context;
-  }
-
-  // TODO: 画布 - 元素
-  get canvas() {
-    return this.__canvas.canvas;
-  }
-
-  // TODO: 监听器
-  private listener: Listener<MouseEvent> = new Listener();
-
-  constructor(selectors: string | HTMLCanvasElement, options?: Partial<CanvasOptions>) {
-    const { width, height, timout } = mergeObj({ width: 340, height: 300, timout: 0 }, options || {});
-    this.__canvas = new CanvasItem(width, height, typeof selectors === 'string' ? document.querySelector(selectors) : selectors);
-    this.canvas.addEventListener('mousemove', throttle(this.onMouseMove.bind(this), timout));
-    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-    //
-    this.canvas.addEventListener('click', this.onClick.bind(this));
-    this.canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
-    this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
-    //
-    Object.defineProperty(this, '__canvas', { enumerable: false });
-  }
-
-  // TODO: 鼠标按下
-  private onMouseDown(event: MouseEvent) {
-    this.listener.publish('mousedown', event);
-  }
-
-  // TODO: 鼠标移动
-  private onMouseMove(event: MouseEvent) {
-    this.listener.publish('mousemove', event);
-  }
-
-  // TODO: 鼠标抬起
-  private onMouseUp(event: MouseEvent) {
-    this.onMouseMove(event);
-    this.listener.publish('mouseup', event);
-  }
-
-  // TODO: 单击
-  private onClick(event: MouseEvent) {
-    this.listener.publish('click', event);
-  }
-
-  // TODO: 双击
-  private onDoubleClick(event: MouseEvent) {
-    this.listener.publish('dblclick', event);
-  }
-
-  // TODO: 右键菜单
-  private onContextMenu(event: MouseEvent) {
-    this.listener.publish('contextmenu', event);
-  }
-
-  // TODO: 绑定事件
-  public on(key: ListenerTypes, listener: (data: MouseEvent) => void) {
-    this.listener.subscribe(key, listener);
-  }
-
-  // TODO: 解绑事件
-  public off(key: ListenerTypes, listener: (data: MouseEvent) => void) {
-    this.listener.unsubscribe(key, listener);
-  }
-
-  // TODO: 获取位图
-  public getBitmap() {
-    return this.__canvas.getBitmap();
-  }
-
-  // TODO: 清空画布
-  public clearDraw() {
-    this.__canvas.clear();
-  }
-
-  // TODO: 销毁
-  public destroy() {
-    this.__canvas.destroy();
+  destroy() {
+    this.clear();
+    super.clear();
   }
 }
