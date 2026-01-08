@@ -136,7 +136,7 @@ export class QuadTree {
   }
 
   /**
-   * 检查形状是否完全超出当前节点范围
+   * 检查形状是否存在越界行为
    * 注意：此方法仅在父节点插入时使用（处理越界形状）
    */
   private isOutRange(shape: Shape) {
@@ -196,8 +196,8 @@ export class QuadTree {
         this.isSplit = false;
       }
 
-      // 父节点也取消合并（避免嵌套合并冲突）
-      if (this.parent) this.parent.cancelMerge();
+      // 尝试合并父节点
+      this.parent?.checkMerge();
     }, this.mergeTimer);
   }
 
@@ -357,5 +357,6 @@ export class QuadTree {
       delete shape.node[QuadTreeIndex];
     }
     this.children = [];
+    this.parent?.checkMerge();
   }
 }
