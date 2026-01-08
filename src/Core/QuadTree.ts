@@ -1,244 +1,361 @@
-// import { Shape } from './Shape';
-// export class QuadTree {
-//
-// }
+import type { Bounding, Point, Shape, Size } from './Shape';
+import { EngineLogger } from '../Logger';
 
-//
-// /**
-//  * 四叉树数据结构，用于空间分割和碰撞检测
-//  */
-// export class QuadTree {
-//   // 根节点存储的形状数组
-//   protected root: Shape[] = [];
-//   // 是否已分裂为子节点
-//   private divided: boolean = false;
-//   // 最大节点深度（递归层级限制）
-//   private readonly maxDepth: number;
-//   // 单个节点容量（超过则分裂）
-//   private readonly capacity: number;
-//   // 分区中心点坐标
-//   private readonly centerX: number;
-//   private readonly centerY: number;
-//   // 父节点引用
-//   public parent?: QuadTree = undefined;
-//   // 延迟销毁定时器
-//   private destroyTimer?: number = undefined;
-//   // 子节点（四个象限）
-//   protected children: Array<QuadTree> = [];
-//   // 边界框 {top, left, bottom, width, right, height}
-//   private readonly bounding: { top: number; left: number; bottom: number; width: number; right: number; height: number };
-//
-//   /**
-//    * @param left 边界左坐标
-//    * @param top 边界上坐标
-//    * @param width 边界宽度
-//    * @param height 边界高度
-//    * @param capacity 节点容量（默认3）
-//    * @param maxNode 最大节点深度（默认10）
-//    */
-//   constructor(left: number, top: number, width: number, height: number, capacity = 3, maxNode = 10) {
-//     this.maxDepth = maxNode;
-//     this.capacity = capacity;
-//     this.centerX = left + width / 2;  // 水平中心
-//     this.centerY = top + height / 2;  // 垂直中心
-//     this.bounding = { top, left, width, height, right: left + width, bottom: top + height };
-//   }
-//
-//   /**
-//    * 获取形状所在的象限索引
-//    * @param shape 目标形状
-//    * @returns 象限索引：0=左上, 1=右上, 2=左下, 3=右下, -1=跨越多象限
-//    */
-//   protected getIndex(shape: Shape): -1 | 0 | 1 | 2 | 3 {
-//     const { centerX, centerY } = this;
-//     // 检查各象限边界条件
-//     if (shape.bounding.bottom < centerY && shape.bounding.right < centerX) return 0;   // 左上
-//     if (shape.bounding.left > centerX && shape.bounding.bottom < centerY) return 1;   // 右上
-//     if (shape.bounding.top > centerY && shape.bounding.right < centerX) return 2;     // 左下
-//     if (shape.bounding.top > centerY && shape.bounding.left > centerX) return 3;      // 右下
-//     return -1;  // 跨越多个象限
-//   }
-//
-//   /**
-//    * 创建子节点（按象限）
-//    * @param index 象限索引
-//    * @returns 创建或获取的子节点
-//    */
-//   private createChildren(index: 0 | 1 | 2 | 3) {
-//     if (!this.children[index]) {
-//       const width = this.bounding.width / 2;
-//       const height = this.bounding.height / 2;
-//       // 计算子象限边界：左上角坐标
-//       const left = this.bounding.left + (index % 2) * width;
-//       const top = this.bounding.top + Math.floor(index / 2) * height;
-//       // 递归深度减1
-//       this.children[index] = new QuadTree(left, top, width, height, this.maxDepth - 1, this.capacity);
-//     }
-//     return this.children[index];
-//   }
-//
-//   /**
-//    * 检查形状是否与当前四叉树区域相交
-//    * @param shape 目标形状
-//    * @returns 是否相交
-//    */
-//   public intersects(shape: Shape): boolean {
-//     const { top, left, right, bottom } = shape.bounding;
-//     // 检查边界不重叠的情况
-//     if (right < this.bounding.left) return false;
-//     if (left > this.bounding.right) return false;
-//     if (top > this.bounding.bottom) return false;
-//     if (bottom < this.bounding.top) return false;
-//     return true;
-//   }
-//
-//   /**
-//    * 更新子形状的索引位置
-//    * @param index 起始索引
-//    */
-//   private updateChildrenIndexes(index: number) {
-//     const count = this.root.length;
-//     for (let i = index; i < count; i++) {
-//       // 通知形状更新其在父节点中的索引
-//       this.root[i].parent.setIndex(this, i);
-//     }
-//   }
-//
-//   /**
-//    * 插入形状到四叉树
-//    * @param shape 待插入的形状
-//    */
-//   public insert(shape: Shape): void {
-//     // 形状不在当前区域则忽略
-//     if (!this.intersects(shape)) return;
-//     // 清除待销毁定时器（如果有）
-//     if (this.destroyTimer) {
-//       clearTimeout(this.destroyTimer);
-//       this.destroyTimer = undefined;
-//     }
-//     if (!this.divided) {
-//       // 未分裂状态：检查容量
-//       if (this.root.length >= this.capacity) {
-//         // 达到容量，分裂节点
-//         this.divided = true;
-//         const children = this.root.splice(0, this.root.length);  // 取出所有形状
-//         for (const shape of children) {
-//           // 从当前节点移除，重新插入到子节点
-//           shape.parent.remove(this);
-//           this.insert(shape);
-//         }
-//       } else {
-//         // 未达容量，直接添加到根节点
-//         shape.parent.add(this, this.root.length);
-//         this.root.push(shape);
-//       }
-//     } else {
-//       // 已分裂状态：获取形状所在象限
-//       const index = this.getIndex(shape);
-//       if (index === -1 || !this.maxDepth) {
-//         // 跨象限或达到深度限制，存入当前节点
-//         shape.parent.add(this, this.root.length);
-//         this.root.push(shape);
-//       } else {
-//         // 递归插入到子象限
-//         this.createChildren(index).insert(shape);
-//       }
-//     }
-//   }
-//
-//   /**
-//    * 检查并移除子节点（当节点空时）
-//    */
-//   private checkAndRemoveChild() {
-//     // 检查是否所有子节点为空
-//     if (this.children.filter(Boolean).length === 0) {
-//       this.divided = false;
-//     }
-//     // 当前节点为空且已分裂，延迟销毁
-//     if (!this.root.length && this.divided) {
-//       this.destroyTimer = setTimeout(() => {
-//         this.parent?.removeQuadtreeChild(this);
-//       }, 500) as unknown as number;  // 兼容浏览器和Node.js环境
-//     }
-//   }
-//
-//   /**
-//    * 移除根节点中的形状
-//    * @param index 移除起始位置
-//    * @param removeCount 移除数量（默认1）
-//    */
-//   public removeChild(index: number, removeCount = 1) {
-//     const removedShapes = this.root.splice(index, removeCount);
-//     if (removedShapes.length) {
-//       for (const shape of removedShapes) {
-//         // 通知形状从当前节点移除
-//         shape.parent.remove(this);
-//       }
-//     }
-//     this.updateChildrenIndexes(index);  // 更新剩余形状的索引
-//     this.checkAndRemoveChild();         // 检查是否需要销毁节点
-//   }
-//
-//   /**
-//    * 移除子四叉树节点
-//    * @param child 要移除的子节点
-//    */
-//   public removeQuadtreeChild(child: QuadTree) {
-//     const index = this.children.indexOf(child);
-//     if (index !== -1) {
-//       delete this.children[index];
-//       this.checkAndRemoveChild();
-//     }
-//   }
-//
-//   /**
-//    * 查询某点命中的所有形状
-//    * @param x 点的X坐标
-//    * @param y 点的Y坐标
-//    * @returns 命中的形状数组
-//    */
-//   public isPointInShape(x: number, y: number): Shape[] {
-//     // 点不在当前区域则返回空
-//     const { top, left, right, bottom } = this.bounding;
-//     if (x < left || x > right || y < top || y > bottom) return [];
-//     const target: Shape[] = [];
-//     // 检查当前节点根形状
-//     for (const shape of this.root) {
-//       if (shape.visible) {
-//         target.push(...shape.isPointInShape(x, y));
-//       }
-//     }
-//     // 递归检查子节点（根据点所在象限）
-//     let childIndex: number;
-//     if (x < this.centerX) {
-//       childIndex = y < this.centerY ? 0 : 2;  // 左象限
-//     } else {
-//       childIndex = y < this.centerY ? 1 : 3;  // 右象限
-//     }
-//     if (this.children[childIndex]) {
-//       target.push(...this.children[childIndex].isPointInShape(x, y));
-//     }
-//     return target;
-//   }
-//
-//   /**
-//    * 碰撞检测：查找与给定形状相交的所有形状
-//    * @param shape 目标形状
-//    * @returns 相交的形状数组
-//    */
-//   public crashDetection(shape: Shape): Shape[] {
-//     if (!this.intersects(shape)) return [];
-//     const target: Shape[] = [];
-//     // 检查当前节点的根形状
-//     for (const child of this.root) {
-//       target.push(...child.crashDetection(shape));
-//     }
-//     // 递归检查子节点
-//     for (const child of this.children) {
-//       if (child) {
-//         target.push(...child.crashDetection(shape));
-//       }
-//     }
-//     return target;
-//   }
-// }
+// 四叉树配置选项接口
+export interface QuadTreeOptions {
+  size: Size;          // 四叉树区域尺寸
+  point: Point;        // 四叉树起始坐标
+  minSize: number;     // 最小节点尺寸（防止无限分割）
+  maxDepth: number;    // 最大递归深度
+  mergeTimer: number;  // 合并子节点的延迟时间（毫秒）
+  splitChildren: number; // 触发节点分裂的子元素数量阈值
+}
+
+// 四叉树状态接口（用于序列化）
+export interface QuadTreeState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  bounds: Bounding;          // 节点边界
+  childrenNode: QuadTreeState[]; // 子节点状态
+  children: Record<string, any>[]; // 存储的形状数据（通常仅用于调试）
+}
+
+// 常量定义
+export const QuadTreeName = 'quadTree';       // 形状绑定的四叉树实例属性名
+export const QuadTreeIndex = 'quadTreeIndex'; // 形状在节点中的索引属性名
+
+/**
+ * 四叉树实现类
+ * 用于空间划分，高效管理二维空间中的形状（碰撞检测、查询等）
+ * 特性：
+ * - 动态分裂：当节点内形状数量超过阈值时分裂为四个子节点
+ * - 自动合并：当子节点形状数量减少时，延迟合并回父节点
+ * - 深度控制：通过最大深度防止过度递归
+ */
+export class QuadTree {
+  // 基础属性
+  private readonly x: number;          // 节点左上角x坐标
+  private readonly y: number;          // 节点左上角y坐标
+  private readonly width: number;      // 节点宽度
+  private readonly height: number;     // 节点高度
+  private readonly minSize: number;    // 最小尺寸限制（避免无限分割）
+
+  // 中心点坐标（用于分裂时创建子节点）
+  private readonly centerX: number;
+  private readonly centerY: number;
+
+  // 配置参数
+  private readonly splitChildren: number = 50; // 分裂阈值（默认50个形状）
+  protected maxDepth: number = 10;             // 最大递归深度（默认10）
+  protected mergeTimer: number = 300;          // 合并延迟（默认300ms）
+
+  // 状态标志
+  protected isSplit: boolean = false;         // 是否已分裂
+  private disableSplit: boolean = false;      // 是否禁用分裂（达到深度/尺寸限制）
+  private mergeTimerId: number | undefined;   // 合并定时器ID
+
+  // 树结构关系
+  protected root: QuadTree | undefined;       // 根节点（仅根节点有效）
+  protected parent: QuadTree | undefined;     // 父节点
+
+  // 存储数据
+  protected children: Shape[] = [];           // 当前节点存储的形状
+  protected childrenNode: QuadTree[] = [];    // 四个子节点（未分裂时为空）
+
+  // 节点边界（用于快速碰撞检测）
+  private readonly bounds: Bounding;
+  // 子节点边界数组（按象限顺序：左上、右上、左下、右下）
+  private readonly boundsList: [Bounding, Bounding, Bounding, Bounding];
+
+  constructor(options: Partial<QuadTreeOptions> = {}) {
+    // 初始化节点参数
+    this.x = options.point?.x || 0;
+    this.y = options.point?.y || 0;
+    this.minSize = options.minSize || 10;
+    this.maxDepth = options.maxDepth || 10;
+    this.mergeTimer = options.mergeTimer || 300;
+    this.splitChildren = options.splitChildren || 50;
+    this.width = Math.round(options.size?.width || 0);
+    this.height = Math.round(options.size?.height || 0);
+
+    // 计算中心点（用于分裂）
+    this.centerX = Math.floor(this.width / 2);
+    this.centerY = Math.floor(this.height / 2);
+
+    // 验证最小尺寸（防止无效分割）
+    const msg = `最小尺寸不能小于${this.minSize}`;
+    if (this.width < this.minSize || this.height < this.minSize) {
+      EngineLogger.error(msg);
+      throw new Error(msg);
+    }
+
+    // 计算当前节点边界
+    this.bounds = {
+      top: this.y,
+      left: this.x,
+      width: this.width,
+      height: this.height,
+      right: this.x + this.width,
+      bottom: this.y + this.height,
+    };
+
+    // 计算四个子节点的边界（象限划分）
+    this.boundsList = [
+      // 左上象限
+      { width: this.centerX, height: this.centerY, left: this.x, right: this.x + this.centerX, top: this.y, bottom: this.y + this.centerY },
+      // 右上象限
+      { width: this.width - this.centerX, height: this.centerY, left: this.x + this.centerX, right: this.x + this.width, top: this.y, bottom: this.y + this.centerY },
+      // 左下象限
+      { width: this.centerX, height: this.height - this.centerY, left: this.x, right: this.x + this.centerX, top: this.y + this.centerY, bottom: this.y + this.height },
+      // 右下象限
+      { width: this.width - this.centerX, height: this.height - this.centerY, left: this.x + this.centerX, right: this.x + this.width, top: this.y + this.centerY, bottom: this.y + this.height },
+    ];
+  }
+
+  /**
+   * 确定形状所属的子节点象限
+   * @param shape - 目标形状
+   * @returns 象限索引（0-3）或-1（不属于任何子节点）
+   */
+  protected getIndex(shape: Shape): -1 | 0 | 1 | 2 | 3 {
+    const { top, left, right, bottom } = shape.bounds;
+
+    // 检查形状是否完全包含在指定边界内
+    function isBounds(bounds: Bounding): boolean {
+      return left >= bounds.left && top >= bounds.top && right <= bounds.right && bottom <= bounds.bottom;
+    }
+
+    // 遍历四个象限边界，寻找匹配的子节点
+    for (const [key, value] of Object.entries(this.boundsList)) {
+      if (isBounds(value)) return Number(key) as 0 | 1 | 2 | 3;
+    }
+
+    return -1; // 形状跨越多个象限或超出范围
+  }
+
+  /**
+   * 检查形状是否完全超出当前节点范围
+   * 注意：此方法仅在父节点插入时使用（处理越界形状）
+   */
+  private isOutRange(shape: Shape) {
+    const { top, left, right, bottom } = shape.bounds;
+    return left > this.bounds.left && right > this.bounds.right && top > this.bounds.top && bottom > this.bounds.bottom;
+  }
+
+  /**
+   * 将形状添加到当前节点
+   * 并在形状上记录节点信息（用于快速查找）
+   */
+  private insertPush(shape: Shape): void {
+    if (!shape.node) shape.node = {};
+    shape.node[QuadTreeIndex] = this.children.length;
+    shape.node[QuadTreeName] = this;
+    this.children.push(shape);
+  }
+
+  /**
+   * 取消待处理的合并操作
+   */
+  private cancelMerge() {
+    if (this.mergeTimerId) {
+      clearTimeout(this.mergeTimerId);
+      this.mergeTimerId = undefined;
+    }
+  }
+
+  /**
+   * 检查是否需要合并子节点（延迟执行）
+   * 当前节点分裂后，如果子节点形状总数低于阈值，则触发合并
+   */
+  private checkMerge() {
+    if (!this.isSplit) return;
+    this.cancelMerge();
+
+    // 延迟执行合并检查
+    this.mergeTimerId = setTimeout(() => {
+      if (!this.isSplit) return;
+
+      // 收集所有子节点中的形状
+      const shapes = this.getAllShapes();
+
+      // 取消所有子节点的合并计时（避免重复）
+      this.childrenNode.forEach(node => node.cancelMerge());
+
+      // 如果总形状数低于阈值（分裂阈值的1/3），则合并子节点
+      if (shapes.length < Math.round(this.splitChildren / 3)) {
+        this.children = shapes;
+        // 更新形状的节点引用
+        for (let i = 0, leng = shapes.length; i < leng; i += 1) {
+          shapes[i].node[QuadTreeName] = this;
+          shapes[i].node[QuadTreeIndex] = i;
+        }
+        // 重置子节点
+        this.childrenNode = [];
+        this.isSplit = false;
+      }
+
+      // 父节点也取消合并（避免嵌套合并冲突）
+      if (this.parent) this.parent.cancelMerge();
+    }, this.mergeTimer);
+  }
+
+  /**
+   * 获取当前节点的序列化状态
+   * 主要用于调试和可视化
+   */
+  getState(): QuadTreeState {
+    return {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height,
+      bounds: this.bounds,
+      children: this.children.map(item => item.getState?.() || {}), // 要求形状实现getState
+      childrenNode: this.childrenNode.map(item => item.getState()),
+    };
+  }
+
+  /**
+   * 插入形状到四叉树
+   * 自动处理越界、分裂和合并
+   */
+  public insert(shape: Shape): void {
+    // 如果形状超出当前节点范围且存在父节点，交给父节点处理
+    if (this.parent && this.isOutRange(shape)) {
+      this.parent.insert(shape);
+    }
+    // 若已分裂，尝试放入子节点
+    else if (this.isSplit) {
+      const index = this.getIndex(shape);
+      if (index >= 0 && this.childrenNode[index]) {
+        this.childrenNode[index].insert(shape);
+      } else {
+        // 无法放入子节点（跨越边界），存储在当前节点
+        this.insertPush(shape);
+      }
+      this.checkMerge(); // 检查是否需要合并子节点
+    }
+    // 未分裂状态：检查是否需要分裂
+    else {
+      // 检查是否达到分裂条件（深度/尺寸限制）
+      if (!this.disableSplit) {
+        this.disableSplit = this.maxDepth <= 0 || this.centerX <= this.minSize || this.centerY <= this.minSize;
+      }
+
+      // 触发分裂：形状数量超过阈值且未达到限制
+      if (!this.disableSplit && this.children.length >= this.splitChildren) {
+        this.isSplit = true;
+        const data = {
+          parent: this,
+          mergeTimer: this.mergeTimer,
+          splitChildren: this.splitChildren,
+          maxDepth: Math.max(this.maxDepth - 1, 0), // 深度减1
+        };
+
+        // 创建四个子节点（象限）
+        for (const item of this.boundsList) {
+          const quadTree = new QuadTree({
+            ...data,
+            point: { x: item.left, y: item.top },
+            size: { width: item.width, height: item.height },
+          });
+          quadTree.root = this.root || this; // 传递根节点引用
+          quadTree.parent = this;
+          this.childrenNode.push(quadTree);
+        }
+
+        // 将当前节点中的形状重新插入到子节点
+        for (const shape of this.children.splice(0)) {
+          this.insert(shape);
+        }
+      }
+      // 未达到分裂条件，直接存储
+      else {
+        this.insertPush(shape);
+      }
+    }
+  }
+
+  /**
+   * 从树中移除形状
+   * 更新索引并检查合并
+   */
+  public remove(shape: Shape) {
+    const quadTree = shape.node && shape.node[QuadTreeName];
+    if (!quadTree) return;
+
+    const index = shape.node[QuadTreeIndex];
+    // 验证索引有效性（防止重复移除）
+    if (index === undefined || index < 0 || index >= quadTree.children.length || quadTree.children[index] !== shape) return;
+
+    // 移除形状
+    const spliceShape = quadTree.children.splice(index, 1)[0];
+    delete spliceShape.node[QuadTreeName];
+    delete spliceShape.node[QuadTreeIndex];
+
+    // 更新后续形状的索引
+    for (let i = index, leng = quadTree.children.length; i < leng; i += 1) {
+      quadTree.children[i].node[QuadTreeIndex] = i;
+    }
+
+    // 检查是否需要合并子节点
+    quadTree.checkMerge();
+  }
+
+  /**
+   * 更新形状在树中的位置
+   * 先移除再重新插入
+   */
+  public update(shape: Shape) {
+    const quadTree: QuadTree | undefined = shape.node && shape.node[QuadTreeName];
+    if (quadTree) {
+      quadTree.remove(shape);
+      quadTree.insert(shape); // 重新插入（可能进入不同节点）
+    }
+  }
+
+  /**
+   * 获取当前节点下的所有形状（包括子节点）
+   * 注意：不包含子节点中的子节点（仅直接后代）
+   */
+  public getNodeShapes(): Shape[] {
+    let shapes: Shape[] = [];
+    if (this.isSplit) {
+      for (const node of this.childrenNode) {
+        // 递归获取子节点中的所有形状
+        shapes.push(...node.getAllShapes());
+      }
+    }
+    return shapes;
+  }
+
+  /**
+   * 获取当前节点及其所有后代节点的形状
+   * 深度优先遍历
+   */
+  public getAllShapes(): Shape[] {
+    return [...this.children].concat(this.getNodeShapes());
+  }
+
+  /**
+   * 清空整个四叉树
+   * 取消合并计时器并重置所有状态
+   */
+  public clear() {
+    this.cancelMerge();
+    if (this.isSplit) {
+      // 递归清空子节点
+      this.childrenNode.forEach(node => node.clear());
+      this.childrenNode = [];
+      this.isSplit = false;
+    }
+    // 清除形状的节点引用
+    for (const shape of this.children) {
+      delete shape.node[QuadTreeName];
+      delete shape.node[QuadTreeIndex];
+    }
+    this.children = [];
+  }
+}
