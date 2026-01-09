@@ -1,5 +1,6 @@
 import { EngineLogger } from '../Logger';
 import { EventEmitter } from '../Lib';
+import type { Point } from './Shape.ts';
 
 /**
  * Canvas配置选项接口
@@ -17,6 +18,29 @@ export interface CanvasOptions {
 }
 
 /**
+ * 鼠标事件对象接口
+ * @interface CanvasMouseEvent
+ * @property {Point} [move] - 鼠标移动位置（相对于起始位置）
+ * @property {Point} start - 鼠标起始位置
+ * @property {MouseEvent} [event] - 原生鼠标事件对象
+ */
+export interface CanvasMouseEvent {
+  move?: Point;
+  start: Point;
+  event?: MouseEvent;
+}
+
+/**
+ * 鼠标移动事件对象接口
+ * @interface CanvasMouseMoveEvent
+ * @extends CanvasMouseEvent
+ * @property {Point} move - 鼠标移动位置（相对于起始位置）
+ */
+export interface CanvasMouseMoveEvent extends CanvasMouseEvent {
+  move: Point;
+}
+
+/**
  * Canvas封装类，继承EventEmitter以支持事件系统
  * 提供画布创建、尺寸管理、事件绑定、位图缓存等功能
  * @class Canvas
@@ -24,8 +48,8 @@ export interface CanvasOptions {
  */
 export class Canvas extends EventEmitter {
   private readonly config: CanvasOptions;        // 画布配置
-  private readonly canvas: HTMLCanvasElement;    // HTMLCanvasElement实例
-  private readonly context: CanvasRenderingContext2D; // 2D渲染上下文
+  public readonly canvas: HTMLCanvasElement;    // HTMLCanvasElement实例
+  public readonly context: CanvasRenderingContext2D; // 2D渲染上下文
   //
   private __cacheBitmap: ImageData | null = null; // 位图缓存（用于性能优化）
 
@@ -52,9 +76,9 @@ export class Canvas extends EventEmitter {
    * @returns {boolean} - 是否允许设置
    */
   private handlerValue(key: 'width' | 'height' | 'ratio', value: number): boolean {
-    const state = Number.isFinite(value) && this[key] !== value && value > 0;
-    if (!state) EngineLogger.warn(`${key} 不是有效值 (必须是大于0的有限数字)`);
-    return state;
+    if (!Number.isFinite(value) || value <= 0) return EngineLogger.warn(`${key} 不是有效值 (必须是大于0的有限数字)`), false;
+    if (this[key] === value) return false;
+    return true;
   }
 
   /** 设置画布宽度（CSS像素） */
@@ -139,26 +163,27 @@ export class Canvas extends EventEmitter {
    * - dblclick: 双击
    * - contextmenu: 右键菜单
    *
-   * 注意：mousemove事件在鼠标按下后才会触发，并包含移动偏移量(moveX, moveY)
+   * 注意：mousemove 事件在鼠标按下后才会触发
    */
   private bindEvents() {
+    const event: CanvasMouseEvent = { event: undefined, move: undefined, start: { x: 0, y: 0 } };
     // 鼠标按下处理
     const onMouseDown = (e: MouseEvent) => {
-      let last: MouseEvent & { moveX?: number, moveY?: number } | undefined = undefined;
-      this.emit('mousedown', e);
-      const { clientX, clientY } = e;
+      event.event = e;
+      event.start = { x: e.offsetX, y: e.offsetY };
+      this.emit('mousedown', event);
 
       // 鼠标移动处理（仅在按下时监听）
       const onMouseMove = (e: MouseEvent) => {
-        last = e;
-        last.moveX = e.clientX - clientX;  // 相对初始位置的X偏移
-        last.moveY = e.clientY - clientY;  // 相对初始位置的Y偏移
-        this.emit('mousemove', last);
+        event.event = e;
+        event.move = { x: e.offsetX - event.start.x, y: e.offsetY - event.start.y };
+        this.emit('mousemove', event);
       };
 
       // 鼠标释放处理
-      const onMouseUp = () => {
-        this.emit('mouseup', last);
+      const onMouseUp = (e: MouseEvent) => {
+        event.event = e;
+        this.emit('mouseup', event);
         // 移除临时事件监听
         this.canvas.removeEventListener('mouseup', onMouseUp);
         this.canvas.removeEventListener('mousemove', onMouseMove);
@@ -199,6 +224,14 @@ export class Canvas extends EventEmitter {
   }
 
   /**
+   * 绘制函数
+   * @param func - 绘制函数
+   */
+  draw(func: (ctx: CanvasRenderingContext2D) => void) {
+    func(this.context);
+  }
+
+  /**
    * 获取当前画布的位图数据（ImageData）
    * 使用缓存机制优化重复读取
    * @returns {ImageData | null} 位图数据或null（当获取失败时）
@@ -223,8 +256,17 @@ export class Canvas extends EventEmitter {
    */
   clear() {
     this.__cacheBitmap = null;
-    // 清除整个画布区域（考虑设备像素比）
+    // 快照
+    this.context.save();
+    // 重置
+    this.context.resetTransform();
+    // 关闭全部路径
+    this.context.beginPath();
+    // 清空画布
     this.context.clearRect(0, 0, this.width * this.ratio, this.height * this.ratio);
+    // 还原
+    this.context.restore();
+    // 触发事件
     this.emit('clear');
   }
 

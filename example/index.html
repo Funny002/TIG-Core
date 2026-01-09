@@ -4,10 +4,41 @@
     <meta charset="UTF-8">
     <title>TIG-Core</title>
   </head>
-  <body>
-    <div id="App" class="app">
-      <canvas id="Canvas"></canvas>
+  <body class="root">
+    <div class="app">
+      <canvas class="canvas"></canvas>
     </div>
     <script type="module" src="./index.ts"></script>
   </body>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .root,
+    .app {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .canvas {
+      width: 600px;
+      height: 400px;
+      border: 1px solid #ddd;
+      box-sizing: content-box;
+      background-size: 20px 20px;
+      background-image: url("data:image/gif;base64,R0lGODlhFAAUAJEAAP///8zMzP///wAAACH5BAUAAAIALAAAAAAUABQAAAIohI+hy+jAYnhJLnrsxVBP7n1YyHVaSYKhh7Lq+VotPLo1TaW3HEtlAQA7");
+    }
+  </style>
 </html>

@@ -7,6 +7,7 @@ export default defineConfig({
   build: {
     minify: true,
     outDir: 'libs',
+    sourcemap: false,
     lib: {
       name: 'TigCore',
       fileName: 'index',

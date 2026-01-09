@@ -1,1 +1,0 @@
-(function(e){typeof define==`function`&&define.amd?define([],e):e()})(function(){console.log(`x`)});

@@ -73,3 +73,33 @@ export function deepMerge(...objects: Record<string, any>[]) {
     return prev;
   }, {} as Record<string, any>);
 }
+
+/**
+ * 对象选择器
+ * @param {Object} obj - 源对象
+ * @param {string[]} keys - 需要选择的键
+ * @returns {Object} 新对象，只包含指定的键
+ */
+export function objectPick(obj: Record<string, any>, keys: string[]): Record<string, any> {
+  return keys.reduce((prev, key): Record<string, any> => {
+    if (obj.hasOwnProperty(key)) {
+      prev[key] = obj[key];
+    }
+    return prev;
+  }, {} as Record<string, any>);
+}
+
+/**
+ * 对象过滤器
+ * @param {Object} obj - 源对象
+ * @param {string[]} keys - 需要排除的键
+ * @returns {Object} 新对象，排除指定的键
+ */
+export function objectOmit(obj: Record<string, any>, keys: string[]): Record<string, any> {
+  return Object.keys(obj).reduce((prev, key): Record<string, any> => {
+    if (!keys.includes(key)) {
+      prev[key] = obj[key];
+    }
+    return prev;
+  }, {} as Record<string, any>);
+}

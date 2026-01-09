@@ -1,8 +1,10 @@
 import { LoggerLevel } from './Utils';
 import { EngineLogger } from './Logger';
 
+export * as Core from './Core';
 export * as Utils from './Utils';
 export * as Style from './Style';
+export * as Shape from './Shape';
 
 EngineLogger.setLevel(LoggerLevel.Debug);
 
@@ -14,3 +16,15 @@ EngineLogger.debug('调试信息');
 EngineLogger.time('operation');
 // 执行某些操作
 EngineLogger.timeEnd('operation'); // 输出操作耗时
+
+import * as Core from './Core';
+import * as Utils from './Utils';
+import * as Style from './Style';
+import * as Shape from './Shape';
+
+export default {
+  Core,
+  Utils,
+  Style,
+  Shape,
+};

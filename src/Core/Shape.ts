@@ -52,7 +52,7 @@ export interface Bounding {
  */
 export abstract class Shape extends EventEmitter {
   /** 抽象尺寸属性，必须由子类实现 */
-  abstract size: Size;
+  abstract readonly size: Size;
 
   /** 基础坐标点 */
   protected point: Point;
@@ -112,10 +112,10 @@ export abstract class Shape extends EventEmitter {
    * @param value - 目标值
    * @returns {boolean} - 是否允许设置（必须是有限数字且不等于当前值）
    */
-  protected handlerValue(key: 'x' | 'y' | 'width' | 'height', value: number) {
-    const state = Number.isFinite(value) && this[key] !== value;
-    if (!state) EngineLogger.error(`${key} 属性值无效`);
-    return state;
+  protected handlerValue(key: 'x' | 'y' | 'width' | 'height', value: number): boolean {
+    if (!Number.isFinite(value)) return EngineLogger.error(`${key} 属性值无效`), false;
+    if (this[key] === value) return false;
+    return true;
   }
 
   /** 设置Y坐标，验证通过后触发point-changed事件 */
@@ -159,6 +159,22 @@ export abstract class Shape extends EventEmitter {
   }
 
   /**
+   * 获取当前状态
+   * @returns {Record<string, any>} - 状态对象
+   */
+  getState(): Record<string, any> {
+    return {
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height,
+      size: { ...this.size },
+      point: { ...this.point },
+      bounds: { ...this.bounds },
+    };
+  };
+
+  /**
    * 碰撞检测抽象方法
    * @abstract
    * @param other - 另一个形状
@@ -174,10 +190,4 @@ export abstract class Shape extends EventEmitter {
    * @throws {Error} - 如果子类未实现
    */
   abstract draw(ctx: CanvasRenderingContext2D): void;
-
-  /**
-   * 获取当前状态
-   * @returns {Record<string, any>} - 状态对象
-   */
-  abstract getState(): Record<string, any>;
 }
