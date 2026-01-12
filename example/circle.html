@@ -42,11 +42,14 @@
   </style>
   <script type="module">
     import { Core, Shape } from '../src/main';
+
     const canvas = new Core.Canvas({ selectors: '.canvas', width: 600, height: 400 });
-    const circle = new Shape.Circle({ x: 0, y: 0, width: 100, height: 100, stroke: 'red', lineWidth: 1, lineDash: [10, 2] });
+    const circle = new Shape.Circle({ x: 0, y: 0, width: 100, height: 100, style: { fillStyle: '#000' } });
+
     function toPositive(num) {
       return num < 0 ? -num : num;
     }
+
     canvas.on('mousemove', (e) => {
       circle.x = Math.min(e.start.x + e.move.x, e.start.x);
       circle.y = Math.min(e.start.y + e.move.y, e.start.y);
