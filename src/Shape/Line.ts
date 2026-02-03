@@ -1,8 +1,8 @@
 import { Shape } from '../Core';
 import { CanvasStyle } from '../Lib';
+import { EngineLogger } from '../Logger';
 import type { Point, Size } from '../Core';
 import type { CanvasStyleConfig } from '../Lib';
-import { EngineLogger } from '../Logger';
 
 export interface LineOptions {
   x: number;                         // 起始坐标
@@ -58,8 +58,7 @@ export class Line extends Shape {
 
   protected handlerValue(key: 'x' | 'y' | 'width' | 'height' | 'endX' | 'endY', value: number): boolean {
     if (!Number.isFinite(value)) return EngineLogger.error(`${key} 值无效`), false;
-    if (this[key] === value) return false;
-    return true;
+    return this[key] !== value;
   }
 
   set endX(value: number) {

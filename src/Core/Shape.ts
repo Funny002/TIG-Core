@@ -114,8 +114,7 @@ export abstract class Shape extends EventEmitter {
    */
   protected handlerValue(key: 'x' | 'y' | 'width' | 'height', value: number): boolean {
     if (!Number.isFinite(value)) return EngineLogger.error(`${key} 属性值无效`), false;
-    if (this[key] === value) return false;
-    return true;
+    return this[key] !== value;
   }
 
   /** 设置Y坐标，验证通过后触发point-changed事件 */
