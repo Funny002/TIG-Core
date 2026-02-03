@@ -36,9 +36,13 @@ export class Line extends Shape {
   }
 
   get size(): Size {
+    function toPositive(num: number) {
+      return num < 0 ? -num : num;
+    }
+
     return {
-      width: 0,
-      height: 0,
+      width: toPositive(this.endX - this.x),
+      height: toPositive(this.endY - this.y),
     };
   }
 
