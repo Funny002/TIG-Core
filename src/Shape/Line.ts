@@ -1,103 +1,108 @@
-// import { Shape, Point, Size } from '../Shape';
-//
-// export class Line extends Shape {
-//   private _end: Point;
-//
-//   constructor(start: Point, end: Point) {
-//     super(start);
-//     this._end = end;
-//   }
-//
-//   get size(): Size {
-//     const minX = Math.min(this.x, this._end.x);
-//     const maxX = Math.max(this.x, this._end.x);
-//     const minY = Math.min(this.y, this._end.y);
-//     const maxY = Math.max(this.y, this._end.y);
-//
-//     return {
-//       width: maxX - minX,
-//       height: maxY - minY,
-//     };
-//   }
-//
-//   set size(value: Size) {
-//     // 线条的size是只读的，由起点和终点决定
-//     console.warn('Line size is read-only, determined by start and end points');
-//   }
-//
-//   get end(): Point {
-//     return this._end;
-//   }
-//
-//   set end(value: Point) {
-//     const oldEnd = { ...this._end };
-//     this._end = value;
-//
-//     // 如果终点变化，触发size-changed事件
-//     if (oldEnd.x !== value.x || oldEnd.y !== value.y) {
-//       this.emit('size-changed', { width: this.width, height: this.height });
-//     }
-//   }
-//
-//   get length(): number {
-//     const dx = this._end.x - this.x;
-//     const dy = this._end.y - this.y;
-//     return Math.sqrt(dx * dx + dy * dy);
-//   }
-//
-//   get angle(): number {
-//     return Math.atan2(this._end.y - this.y, this._end.x - this.x);
-//   }
-//
-//   get bounds() {
-//     const minX = Math.min(this.x, this._end.x);
-//     const maxX = Math.max(this.x, this._end.x);
-//     const minY = Math.min(this.y, this._end.y);
-//     const maxY = Math.max(this.y, this._end.y);
-//
-//     return {
-//       top: minY,
-//       left: minX,
-//       right: maxX,
-//       bottom: maxY,
-//       width: maxX - minX,
-//       height: maxY - minY,
-//     };
-//   }
-//
-//   collision(other: Shape): boolean {
-//     // 检测起点是否在形状内
-//     const startInShape =
-//         this.x >= other.bounds.left &&
-//         this.x <= other.bounds.right &&
-//         this.y >= other.bounds.top &&
-//         this.y <= other.bounds.bottom;
-//
-//     // 检测终点是否在形状内
-//     const endInShape =
-//         this._end.x >= other.bounds.left &&
-//         this._end.x <= other.bounds.right &&
-//         this._end.y >= other.bounds.top &&
-//         this._end.y <= other.bounds.bottom;
-//
-//     return startInShape || endInShape;
-//   }
-//
-//   draw(ctx: CanvasRenderingContext2D): void {
-//     ctx.beginPath();
-//     ctx.moveTo(this.x, this.y);
-//     ctx.lineTo(this._end.x, this._end.y);
-//     ctx.stroke();
-//   }
-//
-//   getState(): Record<string, any> {
-//     return {
-//       type: 'Line',
-//       start: { x: this.x, y: this.y },
-//       end: this._end,
-//       length: this.length,
-//       angle: this.angle,
-//       bounds: this.bounds,
-//     };
-//   }
-// }
+import { Shape } from '../Core';
+import { CanvasStyle } from '../Lib';
+import type { Point, Size } from '../Core';
+import type { CanvasStyleConfig } from '../Lib';
+import { EngineLogger } from '../Logger';
+
+export interface LineOptions {
+  x: number;                         // 起始坐标
+  y: number;                         // 起始坐标
+  endPoint: Point;                   // 结束坐标
+  visible: boolean;                  // 是否可见
+  style: Partial<CanvasStyleConfig>; // 样式配置
+}
+
+export class Line extends Shape {
+  public visible: boolean = true;
+  private readonly endPoint: Point;
+  private readonly style: CanvasStyle;
+
+  // destroy width
+  set width(_: any) {
+    throw new Error('Line width is read-only');
+  }
+
+  // destroy height
+  set height(_: any) {
+    throw new Error('Line height is read-only');
+  }
+
+  get endX() {
+    return this.endPoint.x;
+  }
+
+  get endY() {
+    return this.endPoint.y;
+  }
+
+  get size(): Size {
+    return {
+      width: 0,
+      height: 0,
+    };
+  }
+
+  constructor(config: Partial<LineOptions>) {
+    super({ x: config.x || 0, y: config.y || 0 });
+    //
+    this.visible = config.visible ?? true;
+    this.style = new CanvasStyle(config.style || {});
+    this.endPoint = config.endPoint || { x: config.x || 0, y: config.y || 0 };
+    //
+    Object.defineProperty(this, 'endPoint', { enumerable: false });
+  }
+
+  protected handlerValue(key: 'x' | 'y' | 'width' | 'height' | 'endX' | 'endY', value: number): boolean {
+    if (!Number.isFinite(value)) return EngineLogger.error(`${key} 值无效`), false;
+    if (this[key] === value) return false;
+    return true;
+  }
+
+  set endX(value: number) {
+    if (!this.handlerValue('endX', value)) return;
+    this.endPoint.x = value;
+    this.emit('endPoint-changed', { ...this.endPoint });
+  }
+
+  set endY(value: number) {
+    if (!this.handlerValue('endY', value)) return;
+    this.endPoint.y = value;
+    this.emit('endPoint-changed', { ...this.endPoint });
+  }
+
+  setStartPoint(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
+  setEndPoint(x: number, y: number) {
+    this.endX = x;
+    this.endY = y;
+  }
+
+  setPoint(start: Point, point: Point) {
+    this.setStartPoint(start.x, start.y);
+    this.setEndPoint(point.x, point.y);
+  }
+
+  collision(shape: Shape): boolean {
+    console.log('collision', shape);
+    return false;
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    if (!this.visible) return;
+    // 保存状态
+    ctx.save();
+    try {
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.endX, this.endY);
+      // 绘制填充和边框
+      this.style.apply(ctx);
+      this.style.drawStroke(ctx);
+    } finally {
+      ctx.restore();
+    }
+  }
+}

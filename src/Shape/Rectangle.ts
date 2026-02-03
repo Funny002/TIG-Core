@@ -42,11 +42,11 @@ export class Rectangle extends Shape {
   set rounds(value: number | number[]) {
     const clamp = (value: number): boolean => {
       if (!Number.isFinite(value)) {
-        EngineLogger.warn(`Circle rounds 值必须为数字，当前值: ${value}`);
+        EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
         return false;
       }
       if (value < 0) {
-        EngineLogger.warn(`Circle rounds 值不能小于 0，当前值: ${value}`);
+        EngineLogger.warn(`Rectangle rounds 值不能小于 0，当前值: ${value}`);
         return false;
       }
       return true;
@@ -56,16 +56,16 @@ export class Rectangle extends Shape {
       if (value.length <= 4) {
         const list = [value[0], value[1], value[2] || value[0], value[3] || value[1]];
         if (list.find((value) => !clamp(value))) {
-          EngineLogger.warn(`Circle rounds 值必须为数字，当前值: ${value}`);
+          EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
         } else {
           this.__rounds = [...list];
         }
       } else {
-        EngineLogger.warn(`Circle rounds 值长度不能超过 4，当前值: ${value}`);
+        EngineLogger.warn(`Rectangle rounds 值长度不能超过 4，当前值: ${value}`);
       }
     } else {
       if (!clamp(value)) {
-        EngineLogger.warn(`Circle rounds 值必须为数字，当前值: ${value}`);
+        EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
       } else {
         this.__rounds = value;
       }
@@ -84,7 +84,7 @@ export class Rectangle extends Shape {
   collision(shape: Shape): boolean {
     console.log('collision', shape);
     // // 简单的圆形碰撞检测
-    // if (other instanceof Circle) {
+    // if (other instanceof Rectangle) {
     //   const dx = this.centerX - other.centerX;
     //   const dy = this.centerY - other.centerY;
     //   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -93,7 +93,7 @@ export class Rectangle extends Shape {
     //   return distance < radius1 + radius2;
     // }
     // // 可以扩展其他形状的碰撞检测
-    // console.warn('碰撞检测仅支持 Circle 之间');
+    // console.warn('碰撞检测仅支持 Rectangle 之间');
     return false;
   }
 
@@ -103,7 +103,7 @@ export class Rectangle extends Shape {
     ctx.save();
     try {
       ctx.beginPath();
-      const rounds = Array.isArray(this.rounds) ? this.rounds : [this.rounds, this.rounds, this.rounds, this.rounds];
+      const rounds = Array.isArray(this.__rounds) ? this.__rounds : [this.__rounds, this.__rounds, this.__rounds, this.__rounds];
       ctx.roundRect(this.x, this.y, this.size.width, this.size.height, rounds);
       // 绘制填充和边框
       this.style.apply(ctx);

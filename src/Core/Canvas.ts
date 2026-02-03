@@ -25,9 +25,10 @@ export interface CanvasOptions {
  * @property {MouseEvent} [event] - 原生鼠标事件对象
  */
 export interface CanvasMouseEvent {
-  move?: Point;
   start: Point;
-  event?: MouseEvent;
+  move: null | Point;
+  point: null | Point;
+  event: null | MouseEvent;
 }
 
 /**
@@ -166,16 +167,18 @@ export class Canvas extends EventEmitter {
    * 注意：mousemove 事件在鼠标按下后才会触发
    */
   private bindEvents() {
-    const event: CanvasMouseEvent = { event: undefined, move: undefined, start: { x: 0, y: 0 } };
+    const event: CanvasMouseEvent = { move: null, point: null, event: null, start: { x: 0, y: 0 } };
     // 鼠标按下处理
     const onMouseDown = (e: MouseEvent) => {
       event.event = e;
       event.start = { x: e.offsetX, y: e.offsetY };
+      event.point = { x: e.offsetX, y: e.offsetY };
       this.emit('mousedown', event);
 
       // 鼠标移动处理（仅在按下时监听）
       const onMouseMove = (e: MouseEvent) => {
         event.event = e;
+        event.point = { x: e.offsetX, y: e.offsetY };
         event.move = { x: e.offsetX - event.start.x, y: e.offsetY - event.start.y };
         this.emit('mousemove', event);
       };
@@ -183,6 +186,8 @@ export class Canvas extends EventEmitter {
       // 鼠标释放处理
       const onMouseUp = (e: MouseEvent) => {
         event.event = e;
+        event.move = null;
+        event.point = null;
         this.emit('mouseup', event);
         // 移除临时事件监听
         this.canvas.removeEventListener('mouseup', onMouseUp);

@@ -122,14 +122,14 @@ export abstract class Shape extends EventEmitter {
   set y(value: number) {
     if (!this.handlerValue('y', value)) return;
     this.point.y = value;
-    this.emit('point-changed', { x: this.x, y: this.y });
+    this.emit('point-changed', { ...this.point });
   }
 
   /** 设置X坐标，验证通过后触发point-changed事件 */
   set x(value: number) {
     if (!this.handlerValue('x', value)) return;
     this.point.x = value;
-    this.emit('point-changed', { x: this.x, y: this.y });
+    this.emit('point-changed', { ...this.point });
   }
 
   /** 设置宽度，验证通过后触发size-changed事件 */
