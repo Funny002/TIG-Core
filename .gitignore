@@ -4,3 +4,9 @@
 libs
 node_modules
 package-lock.json
+
+# npm 缓存（沙箱环境用 workspace 内缓存目录绕过用户级缓存的限制）
+.npm-cache
+
+# chrome-devtools-mcp 演示生成的截图产物
+shot-*.png

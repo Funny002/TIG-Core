@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIG-Core · 图形展示</title>
+    <link rel="stylesheet" href="./common.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>TIG-Core<span class="sub">· 图形展示</span></div>
+      <nav class="nav">
+        <a href="./index.html">演练场</a>
+        <a href="./shapes.html" class="active">图形</a>
+        <a href="./bezier.html">贝塞尔</a>
+        <a href="./benchmark.html">性能</a>
+        <a href="./scene.html">Scene</a>
+      </nav>
+    </header>
+    <main class="stage">
+      <canvas class="canvas"></canvas>
+      <p class="tip">六种内置图形 + 样式能力：填充/描边/虚线/阴影/透明度/圆角/旋转；三角形与五边形在缓慢旋转</p>
+    </main>
+    <script type="module">
+      import { Core, Shape } from '../src/index';
+
+      const W = 900;
+      const H = 560;
+      const canvas = new Core.Canvas({
+        selectors: '.canvas', width: W, height: H, ratio: window.devicePixelRatio || 1,
+      });
+
+      function pentagon(r) {
+        const pts = [];
+        for (let i = 0; i < 5; i += 1) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+        }
+        return pts;
+      }
+
+      const shapes = [];
+      const spinning = [];
+
+      // 1. Circle（椭圆）：填充 + 描边 + 阴影
+      const circle = new Shape.Circle({
+        x: 80, y: 90, width: 140, height: 90,
+        style: {
+          fillStyle: 'rgba(79, 140, 255, 0.35)', strokeStyle: '#4f8cff', lineWidth: 3,
+          shadowColor: 'rgba(79, 140, 255, 0.6)', shadowBlur: 18,
+        },
+      });
+      shapes.push(circle);
+
+      // 2. Rectangle（圆角 + 虚线描边）
+      const rect = new Shape.Rectangle({
+        x: 375, y: 85, width: 150, height: 90, rounds: 18,
+        style: {
+          fillStyle: 'rgba(255, 107, 107, 0.15)', strokeStyle: '#ff6b6b',
+          lineWidth: 2, lineDash: [8, 6],
+        },
+      });
+      shapes.push(rect);
+
+      // 3. Triangle（旋转）
+      const triangle = new Shape.Triangle({
+        x: 685, y: 80, width: 130, height: 100,
+        style: { fillStyle: 'rgba(155, 89, 182, 0.45)', strokeStyle: '#9b59b6', lineWidth: 2 },
+      });
+      triangle.node = { spin: 0.6 };
+      shapes.push(triangle);
+      spinning.push(triangle);
+
+      // 4. Line（圆角端点 + 粗线）
+      const line = new Shape.Line({
+        x: 100, y: 370, endPoint: { x: 200, y: 470 },
+        style: { strokeStyle: '#2ecc71', lineWidth: 10, lineCap: 'round' },
+      });
+      shapes.push(line);
+
+      // 5. Polygon（五边形，旋转）
+      const polygon = new Shape.Polygon({
+        x: 450, y: 430, vertices: pentagon(58),
+        style: { fillStyle: 'rgba(255, 165, 0, 0.4)', strokeStyle: '#ffa500', lineWidth: 2 },
+      });
+      polygon.node = { spin: -0.5 };
+      shapes.push(polygon);
+      spinning.push(polygon);
+
+      // 6. Path（三次贝塞尔 S 曲线）
+      const path = new Shape.Path({
+        x: 660, y: 470,
+        style: { strokeStyle: '#4f8cff', lineWidth: 3 },
+      });
+      path.bezierCurveTo({ x: 700, y: 380 }, { x: 800, y: 560 }, { x: 840, y: 470 });
+      shapes.push(path);
+
+      // 标签
+      const labels = [
+        ['Circle · 阴影', 150, 250],
+        ['Rectangle · 圆角+虚线', 450, 250],
+        ['Triangle · 旋转', 750, 250],
+        ['Line · round cap', 150, 535],
+        ['Polygon · 旋转', 450, 535],
+        ['Path · 贝塞尔', 750, 535],
+      ];
+
+      function drawLabels(ctx) {
+        ctx.fillStyle = '#9fb0c9';
+        ctx.font = '13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const [text, x, y] of labels) ctx.fillText(text, x, y);
+      }
+
+      // 用固定时间步长引擎驱动旋转
+      const engine = new Core.Engine({ mode: 'fixed' });
+      engine.setCallbacks({
+        onUpdate: (timestep) => {
+          const dt = timestep / 1000;
+          for (const s of spinning) s.rotate += s.node.spin * dt;
+        },
+        onRender: () => {
+          canvas.clear();
+          const sorted = [...shapes].sort((a, b) => a.zIndex - b.zIndex);
+          for (const s of sorted) s.draw(canvas.context);
+          drawLabels(canvas.context);
+        },
+      });
+      engine.start();
+    </script>
+  </body>
+</html>

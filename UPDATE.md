@@ -1,5 +1,25 @@
 ## 更新日记
 
+### 2026-08-22（v3.0.0）
+> 完成 v3.0.0 重构：重建核心库，并持续强化架构、性能、示例、测试与文档。
+
+**核心库**
+- [x] 固定时间步长引擎，修正高刷显示器游戏加速问题；支持 `fixed`/`unlimited` 模式、FPS 限帧、时间缩放、渲染插值。
+- [x] `Canvas`（设备像素比 / 鼠标事件 / 位图缓存）、`Shape` 基类（`visible`/`zIndex`/`rotate`/包围盒/事件）。
+- [x] 图形：`Circle` / `Rectangle` / `Line` / `Polygon` / `Triangle` / `Path`。
+- [x] 四叉树 `QuadTree` 空间索引与碰撞检测；样式 `CanvasStyle`；事件 `EventEmitter`；日志 `Logger`；贝塞尔工具。
+- [x] `Scene` 场景编排：`CollisionSystem`（空间索引碰撞）+ `SceneRenderer`（zIndex 渲染）+ 引擎。
+
+**架构与性能**
+- [x] 引擎低耦合拆分：`FrameScheduler`（可注入后端）/ `FixedAccumulator` / `StatsCollector`（纯逻辑，可脱离浏览器测试）。
+- [x] 引擎生命周期事件（`start`/`stop`/`pause`/`resume`/`mode-changed`）、`pause()`/`resume()`/`step()` 单步调试。
+- [x] 包围盒惰性缓存、四叉树热路径优化（`out` 复用 / 内联）、`Canvas.destroy` 释放 DOM 监听。
+
+**示例 / 工具 / 文档 / 测试**
+- [x] 5 个示例：演练场（含暂停/单步）、图形展示、贝塞尔、性能基准、Scene 综合；统一 `common.css` 与顶栏导航。
+- [x] 集成 `chrome-devtools-mcp`（浏览器监控/改页），静态服务器 + MCP 客户端。
+- [x] 单元测试（`node:test`，注入假后端，24 用例）、`docs/guide.md` 使用指南与 `docs/api.md` API 参考。
+
 ### 2026-01-04
 > 开始重构，本次调整版本为 `3.0.0`。  
 > 打算将帧动画调整为固定时间步长，修正高刷显示器游戏加速问题。

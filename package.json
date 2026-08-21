@@ -2,11 +2,19 @@
   "name": "tig-core",
   "private": false,
   "license": "MIT",
-  "version": "bate 3.0.0",
+  "version": "3.0.0",
   "description": "TypeScript In Games Core",
   "author": "Funny002<2048412928@qq.com>",
-  "main": "./dist/index.js",
+  "main": "./libs/index.umd.js",
+  "module": "./libs/index.mjs",
   "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./libs/index.mjs",
+      "require": "./libs/index.umd.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Funny002/TIG-Core.git"
@@ -17,8 +25,13 @@
   "homepage": "https://github.com/Funny002/TIG-Core#readme",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "preview": "vite preview",
+    "serve": "node tools/serve.mjs",
+    "devtools:mcp": "node node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js --headless --no-usage-statistics --allow-unrestricted-paths",
+    "devtools:demo": "node tools/devtools-client.mjs",
+    "pretest": "npm run build",
+    "test": "node --test"
   },
   "dependencies": {
     "color": "^5.0.3",
@@ -26,6 +39,8 @@
     "decimal.js": "^10.6.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "chrome-devtools-mcp": "^1.7.0",
     "typescript": "~5.9.3",
     "vite": "npm:rolldown-vite@7.1.14"
   },

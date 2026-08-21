@@ -1,17 +1,18 @@
 import type { Point } from '../Core';
 
-function validatePoint(point: Point) {
+function validatePoint(point: Point): void {
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
     throw new Error(`无效的点坐标: ${JSON.stringify(point)}`);
   }
 }
 
-function validateT(t: number) {
+function validateT(t: number): void {
   if (!Number.isFinite(t)) {
     throw new Error(`无效的参数 t: ${t}`);
   }
 }
 
+/** 一阶（线性）贝塞尔曲线 */
 export function linearBezier(p0: Point, p1: Point, t: number): Point {
   const u = 1 - t;
   return {
@@ -20,7 +21,8 @@ export function linearBezier(p0: Point, p1: Point, t: number): Point {
   };
 }
 
-export function quadraticBezier(p0: Point, p1: Point, p2: Point, t: number) {
+/** 二阶（二次）贝塞尔曲线 */
+export function quadraticBezier(p0: Point, p1: Point, p2: Point, t: number): Point {
   const u = 1 - t;
   const u2 = u * u;
   const t2 = t * t;
@@ -30,6 +32,7 @@ export function quadraticBezier(p0: Point, p1: Point, p2: Point, t: number) {
   };
 }
 
+/** 三阶（三次）贝塞尔曲线 */
 export function cubicBezier(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
   const u = 1 - t;
   const u2 = u * u;
@@ -43,6 +46,7 @@ export function cubicBezier(p0: Point, p1: Point, p2: Point, p3: Point, t: numbe
   };
 }
 
+/** 贝塞尔曲线抽象基类 */
 export abstract class BezierCurve {
   protected constructor(protected points: Point[]) {
     for (const point of points) {
@@ -50,9 +54,11 @@ export abstract class BezierCurve {
     }
   }
 
+  /** 获取曲线上 t 位置的点（t ∈ [0, 1]） */
   abstract getPoint(t: number): Point;
 }
 
+/** 一阶（线性）贝塞尔曲线类 */
 export class LinearBezier extends BezierCurve {
   constructor(points: Point[]) {
     super(points);
@@ -67,6 +73,7 @@ export class LinearBezier extends BezierCurve {
   }
 }
 
+/** 二阶（二次）贝塞尔曲线类 */
 export class QuadraticBezier extends BezierCurve {
   constructor(points: Point[]) {
     super(points);
@@ -81,6 +88,7 @@ export class QuadraticBezier extends BezierCurve {
   }
 }
 
+/** 三阶（三次）贝塞尔曲线类 */
 export class CubicBezier extends BezierCurve {
   constructor(points: Point[]) {
     super(points);
@@ -95,6 +103,7 @@ export class CubicBezier extends BezierCurve {
   }
 }
 
+/** 根据控制点数量创建对应阶数的贝塞尔曲线 */
 export function createBezierCurve(points: Point[]): BezierCurve {
   switch (points.length) {
     case 2:
@@ -107,14 +116,3 @@ export function createBezierCurve(points: Point[]): BezierCurve {
       throw new Error(`不支持 ${points.length} 个控制点的贝塞尔曲线`);
   }
 }
-
-export default {
-  LinearBezier,
-  QuadraticBezier,
-  CubicBezier,
-  //
-  linearBezier,
-  quadraticBezier,
-  cubicBezier,
-  createBezierCurve,
-};

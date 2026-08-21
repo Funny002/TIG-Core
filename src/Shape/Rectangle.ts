@@ -1,116 +1,103 @@
-import type { CanvasStyleConfig } from '../Lib';
-import type { Point, Size } from '../Core';
-//
 import { EngineLogger } from '../Logger';
-import { CanvasStyle } from '../Lib';
 import { Shape } from '../Core';
+import { CanvasStyle } from '../Lib';
+import { boundsIntersect, circleRectCollide } from '../Lib';
+import type { CanvasStyleConfig } from '../Lib';
+import type { Circle } from './Circle';
 
+/** 矩形选项接口 */
 export interface RectangleOptions {
   x: number;                           // 坐标
   y: number;                           // 坐标
   width: number;                       // 宽度
   height: number;                      // 高度
   visible: boolean;                    // 是否可见
-  rounds: number | number[];           // 圆角宽度
+  rounds: number | number[];           // 圆角半径（数字或 [左上,右上,右下,左下]）
   style: Partial<CanvasStyleConfig>;   // 样式配置
 }
 
+/**
+ * 矩形形状
+ * @extends Shape
+ */
 export class Rectangle extends Shape {
-  readonly size: Size;
-  private readonly style: CanvasStyle;
-
-  public visible: boolean = true;
+  public readonly type = 'rectangle';
+  public readonly style: CanvasStyle;
   private __rounds: number | number[] = 0;
 
-  get centerX() {
-    return this.x + this.size.width / 2;
-  }
-
-  get centerY() {
-    return this.y + this.size.height / 2;
-  }
-
-  get center(): Point {
-    return { x: this.centerX, y: this.centerY };
-  }
-
+  /** 获取圆角半径 */
   get rounds(): number | number[] {
     return this.__rounds;
   }
 
-
+  /** 设置圆角半径（校验并规范化） */
   set rounds(value: number | number[]) {
-    const clamp = (value: number): boolean => {
-      if (!Number.isFinite(value)) {
-        EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
+    const clamp = (v: number): boolean => {
+      if (!Number.isFinite(v)) {
+        EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${v}`);
         return false;
       }
-      if (value < 0) {
-        EngineLogger.warn(`Rectangle rounds 值不能小于 0，当前值: ${value}`);
+      if (v < 0) {
+        EngineLogger.warn(`Rectangle rounds 值不能小于 0，当前值: ${v}`);
         return false;
       }
       return true;
     };
 
     if (Array.isArray(value)) {
-      if (value.length <= 4) {
-        const list = [value[0], value[1], value[2] || value[0], value[3] || value[1]];
-        if (list.find((value) => !clamp(value))) {
-          EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
-        } else {
-          this.__rounds = [...list];
-        }
-      } else {
-        EngineLogger.warn(`Rectangle rounds 值长度不能超过 4，当前值: ${value}`);
+      if (value.length > 4) {
+        EngineLogger.warn(`Rectangle rounds 数组长度不能超过 4，当前值: ${value}`);
+        return;
       }
-    } else {
-      if (!clamp(value)) {
-        EngineLogger.warn(`Rectangle rounds 值必须为数字，当前值: ${value}`);
-      } else {
-        this.__rounds = value;
+      const list = [
+        value[0] ?? 0,
+        value[1] ?? value[0] ?? 0,
+        value[2] ?? value[0] ?? 0,
+        value[3] ?? value[1] ?? value[0] ?? 0,
+      ];
+      if (list.every(clamp)) {
+        this.__rounds = [...list];
       }
+    } else if (clamp(value)) {
+      this.__rounds = value;
     }
   }
 
-  constructor(config: Partial<RectangleOptions>) {
-    super({ x: config.x || 0, y: config.y || 0 });
-    //
-    this.__rounds = config.rounds ?? 0;
+  constructor(config: Partial<RectangleOptions> = {}) {
+    super({ x: config.x ?? 0, y: config.y ?? 0 });
+    this._size = { width: config.width ?? 0, height: config.height ?? 0 };
+    this.rounds = config.rounds ?? 0;
     this.visible = config.visible ?? true;
-    this.style = new CanvasStyle(config.style || {});
-    this.size = { width: config.width || 0, height: config.height || 0 };
+    this.style = new CanvasStyle(config.style ?? {});
   }
 
-  collision(shape: Shape): boolean {
-    console.log('collision', shape);
-    // // 简单的圆形碰撞检测
-    // if (other instanceof Rectangle) {
-    //   const dx = this.centerX - other.centerX;
-    //   const dy = this.centerY - other.centerY;
-    //   const distance = Math.sqrt(dx * dx + dy * dy);
-    //   const radius1 = Math.min(this.size.width, this.size.height) / 2;
-    //   const radius2 = Math.min(other.size.width, other.size.height) / 2;
-    //   return distance < radius1 + radius2;
-    // }
-    // // 可以扩展其他形状的碰撞检测
-    // console.warn('碰撞检测仅支持 Rectangle 之间');
-    return false;
+  /** 获取规范化后的四角圆角半径数组 */
+  private getNormalizedRounds(): number[] {
+    if (Array.isArray(this.__rounds)) {
+      return [...this.__rounds];
+    }
+    return [this.__rounds, this.__rounds, this.__rounds, this.__rounds];
   }
 
-  draw(ctx: CanvasRenderingContext2D): void {
-    if (!this.visible) return;
-    // 保存状态
-    ctx.save();
-    try {
-      ctx.beginPath();
-      const rounds = Array.isArray(this.__rounds) ? this.__rounds : [this.__rounds, this.__rounds, this.__rounds, this.__rounds];
-      ctx.roundRect(this.x, this.y, this.size.width, this.size.height, rounds);
-      // 绘制填充和边框
-      this.style.apply(ctx);
-      this.style.drawFill(ctx);
-      this.style.drawStroke(ctx);
-    } finally {
-      ctx.restore();
+  protected paint(ctx: CanvasRenderingContext2D): void {
+    ctx.beginPath();
+    ctx.roundRect(this.x, this.y, this._size.width, this._size.height, this.getNormalizedRounds());
+    this.style.apply(ctx);
+    this.style.drawFill(ctx);
+    this.style.drawStroke(ctx);
+  }
+
+  collision(other: Shape): boolean {
+    switch (other.type) {
+      case 'circle':
+        return circleRectCollide((other as Circle).centerX, (other as Circle).centerY, (other as Circle).radius, this.bounds);
+      case 'rectangle':
+        return boundsIntersect(this.bounds, other.bounds);
+      case 'line':
+        // 线段与矩形：退化为包围盒检测
+        return boundsIntersect(this.bounds, other.bounds);
+      default:
+        return boundsIntersect(this.bounds, other.bounds);
     }
   }
 
@@ -119,7 +106,6 @@ export class Rectangle extends Shape {
       name: 'Rectangle',
       ...super.getState(),
       rounds: this.rounds,
-      visible: this.visible,
       style: this.style.getConfig(),
     };
   }

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIG-Core · Scene 交互示例</title>
+  </head>
+  <body>
+    <!-- 顶栏：标题 + 快览 + 运行 -->
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>TIG-Core<span class="sub">· Scene 综合示例</span></div>
+      <nav class="nav">
+        <a href="./index.html">演练场</a>
+        <a href="./shapes.html">图形</a>
+        <a href="./bezier.html">贝塞尔</a>
+        <a href="./benchmark.html">性能</a>
+        <a href="./scene.html" class="active">Scene</a>
+      </nav>
+      <div class="quick-stats" id="stats-top">FPS — · 图形 — · 碰撞/步 —</div>
+      <button class="run-btn" id="toggle-run">暂停</button>
+    </header>
+
+    <!-- 主区：画布 + 侧栏 -->
+    <div class="main">
+      <div class="stage">
+        <canvas class="canvas"></canvas>
+      </div>
+
+      <aside class="panel">
+        <nav class="tabs">
+          <button class="tab active" data-tab="func">功能</button>
+          <button class="tab" data-tab="canvas">画布</button>
+          <button class="tab" data-tab="log">日志</button>
+        </nav>
+
+        <!-- 功能 -->
+        <div class="tab-pane active" id="pane-func">
+          <div class="row">
+            <span class="label">FPS 限制</span>
+            <div class="seg" id="fps-group"></div>
+          </div>
+
+          <div class="row">
+            <span class="label">小球</span>
+            <div class="seg">
+              <button class="seg-btn" id="ball-add">+10</button>
+              <button class="seg-btn" id="ball-del">-10</button>
+              <button class="seg-btn" id="ball-clear">清空</button>
+            </div>
+            <span class="value" id="ball-count">0</span>
+          </div>
+
+          <div class="row">
+            <span class="label">弹性碰撞</span>
+            <label class="switch">
+              <input type="checkbox" id="elastic" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="row">
+            <span class="label">速度</span>
+            <input type="range" class="range" id="speed" min="0.2" max="3" step="0.1" value="1">
+            <span class="value" id="speed-val">1.0x</span>
+          </div>
+
+          <div class="row">
+            <span class="label">大小</span>
+            <input type="range" class="range" id="size" min="0.5" max="2" step="0.05" value="1">
+            <span class="value" id="size-val">1.0x</span>
+          </div>
+        </div>
+
+        <!-- 画布 -->
+        <div class="tab-pane" id="pane-canvas">
+          <div class="row">
+            <span class="label">背景</span>
+            <div class="swatches" id="theme-group"></div>
+          </div>
+
+          <div class="row">
+            <span class="label">网格</span>
+            <label class="switch">
+              <input type="checkbox" id="grid" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="row">
+            <span class="label">高清渲染</span>
+            <label class="switch">
+              <input type="checkbox" id="hires" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="hint">背景主题仅影响画布，侧栏保持深色。</div>
+        </div>
+
+        <!-- 日志 -->
+        <div class="tab-pane" id="pane-log">
+          <canvas class="fps-chart" id="fps-chart" width="272" height="64"></canvas>
+          <div class="stats" id="stats"></div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <!-- 属性：常驻，选中时变为可编辑表单 -->
+        <div class="props" id="props"></div>
+      </aside>
+    </div>
+
+    <!-- 底栏 -->
+    <footer class="statusbar" id="statusbar">
+      <span class="tip">点击粒子查看 / 编辑属性</span>
+      <span class="sep">·</span>
+      <span class="tip">四叉树碰撞检测</span>
+      <span class="sep">·</span>
+      <span class="tip">固定时间步长物理</span>
+      <span class="sep">·</span>
+      <span class="tip">按 zIndex 分层渲染</span>
+    </footer>
+  </body>
+  <style>
+    :root {
+      --bg: #0f1319;
+      --topbar: #161c26;
+      --panel: #161c26;
+      --card: #1c2430;
+      --line: #232c3a;
+      --line-soft: #1b2330;
+      --text: #dbe2ee;
+      --text-dim: #9fb0c9;
+      --text-faint: #7c8ba1;
+      --accent: #4f8cff;
+      --accent-soft: #2a3646;
+      --danger: #ff2d55;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+    }
+
+    /* ---------- 顶栏 ---------- */
+    .topbar {
+      flex: 0 0 48px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 16px;
+      background: var(--topbar);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .nav { display: flex; gap: 4px; }
+    .nav a {
+      color: var(--text-faint); text-decoration: none; font-size: 13px;
+      padding: 5px 9px; border-radius: 6px; white-space: nowrap;
+    }
+    .nav a:hover { color: var(--text); background: var(--accent-soft); }
+    .nav a.active { color: var(--text); background: var(--card); }
+    .brand .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 8px var(--accent);
+    }
+    .brand .sub { font-weight: 400; font-size: 13px; color: var(--text-faint); }
+    .quick-stats {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .run-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .run-btn:hover { background: var(--accent-soft); }
+    .run-btn.paused { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ---------- 主区 ---------- */
+    .main { flex: 1 1 auto; display: flex; min-height: 0; }
+
+    .stage {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      overflow: auto;
+    }
+    .canvas {
+      box-sizing: content-box;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background-size: 24px 24px;
+      cursor: crosshair;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    /* ---------- 侧栏 ---------- */
+    .panel {
+      flex: 0 0 300px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+    }
+    .tabs {
+      flex: 0 0 auto;
+      display: flex;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab {
+      flex: 1 1 0;
+      padding: 12px 0;
+      background: transparent;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 13px;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text-dim); }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+    .tab-pane { display: none; flex: 1 1 auto; min-height: 0; padding: 14px; overflow-y: auto; }
+    .tab-pane.active { display: flex; flex-direction: column; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      min-height: 26px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    .label { flex: 0 0 56px; font-size: 13px; color: var(--text-dim); }
+    .value { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; margin-left: auto; }
+
+    .hint {
+      margin-top: 14px; padding: 10px;
+      font-size: 12px; color: var(--text-faint); line-height: 1.6;
+      background: var(--card); border: 1px solid var(--line-soft); border-radius: 8px;
+    }
+
+    /* 分段按钮 */
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .seg-btn {
+      padding: 5px 11px;
+      background: var(--card);
+      color: var(--text-dim);
+      border: none;
+      border-right: 1px solid var(--line);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .seg-btn:last-child { border-right: none; }
+    .seg-btn:hover { background: var(--accent-soft); color: var(--text); }
+    .seg-btn.active { background: var(--accent); color: #fff; }
+
+    /* 开关 */
+    .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: 0 0 auto; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; cursor: pointer;
+      background: var(--line); border-radius: 22px; transition: 0.2s;
+    }
+    .slider::before {
+      content: ""; position: absolute; height: 16px; width: 16px;
+      left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    /* 滑杆 */
+    input.range {
+      flex: 1 1 auto;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      outline: none;
+    }
+    input.range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    /* 色板 */
+    .swatches { display: inline-flex; gap: 6px; }
+    .swatch {
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid transparent; cursor: pointer;
+    }
+    .swatch.active { border-color: var(--accent); }
+
+    /* FPS 折线图 */
+    .fps-chart {
+      flex: 0 0 auto;
+      width: 100%;
+      height: 64px;
+      display: block;
+      margin-bottom: 10px;
+      background: var(--card);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+    }
+
+    /* 统计 / 日志 */
+    .stats {
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.8;
+      white-space: pre-line;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: var(--card);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+    }
+    .log {
+      flex: 1 1 auto;
+      min-height: 0;
+      font-size: 12px;
+      color: var(--text-faint);
+      background: var(--card);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 8px;
+      overflow-y: auto;
+      line-height: 1.7;
+      font-variant-numeric: tabular-nums;
+    }
+    .log .t { color: #55637a; margin-right: 6px; }
+    .log .hl { color: var(--accent); }
+
+    /* 属性（常驻） */
+    .props {
+      flex: 0 0 auto;
+      margin: 14px;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      line-height: 1.6;
+      min-height: 46px;
+    }
+    .props-empty { color: var(--text-faint); font-style: italic; }
+    .props .k { color: var(--text-faint); }
+    .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
+    .prop-grid label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-faint); }
+    .prop-grid input {
+      width: 100%; min-width: 0; padding: 3px 6px; font-size: 12px;
+      background: #121821; color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+    }
+
+    /* ---------- 底栏 ---------- */
+    .statusbar {
+      flex: 0 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      background: var(--topbar);
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .statusbar .sep { color: #3a4556; }
+  </style>
+  <script type="module">
+    import { Core, Shape } from '../src/index';
+
+    const WIDTH = 900;
+    const HEIGHT = 620;
+
+    const canvasEl = document.querySelector('.canvas');
+    const canvas = new Core.Canvas({
+      selectors: '.canvas',
+      width: WIDTH,
+      height: HEIGHT,
+      ratio: window.devicePixelRatio || 1,
+    });
+
+    // ---------- 标签页切换 ----------
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
+        document.querySelectorAll('.tab-pane').forEach((p) => {
+          p.classList.toggle('active', p.id === 'pane-' + tab.dataset.tab);
+        });
+      });
+    });
+
+    // ---------- 主题 / 画布 ----------
+    const THEMES = {
+      dark:  { bg: '#141a24', dot: '#1c2431', border: '#2a3342', accent: '#3b4757' },
+      navy:  { bg: '#0b1a2b', dot: '#17314a', border: '#1f4d79', accent: '#2f6ea8' },
+      ember: { bg: '#1c1414', dot: '#33231d', border: '#5a3b2e', accent: '#9c5a3a' },
+    };
+
+    let showGrid = true;
+    let currentTheme = 'dark';
+
+    function applyTheme() {
+      const t = THEMES[currentTheme];
+      canvasEl.style.borderColor = t.border;
+      canvasEl.style.backgroundColor = t.bg;
+      canvasEl.style.backgroundImage = showGrid
+        ? `radial-gradient(circle, ${t.dot} 1px, transparent 1px)`
+        : 'none';
+    }
+
+    function setTheme(name) {
+      currentTheme = name;
+      applyTheme();
+      themeGroup.querySelectorAll('.swatch').forEach((s) => s.classList.toggle('active', s.title === name));
+    }
+
+    function setGrid(v) {
+      showGrid = v;
+      document.getElementById('grid').checked = v;
+      applyTheme();
+    }
+
+    const themeGroup = document.getElementById('theme-group');
+    Object.keys(THEMES).forEach((name) => {
+      const sw = document.createElement('span');
+      sw.className = 'swatch';
+      sw.style.background = THEMES[name].accent;
+      sw.title = name;
+      sw.addEventListener('click', () => {
+        setTheme(name);
+        log(`背景主题 -> ${name}`, 'hl');
+      });
+      themeGroup.appendChild(sw);
+    });
+    themeGroup.firstElementChild.classList.add('active');
+    applyTheme();
+
+    document.getElementById('grid').addEventListener('change', (e) => {
+      setGrid(e.target.checked);
+      log(`网格 ${showGrid ? '开启' : '关闭'}`, 'hl');
+    });
+
+    document.getElementById('hires').addEventListener('change', (e) => {
+      canvas.ratio = e.target.checked ? (window.devicePixelRatio || 1) : 1;
+      log(`高清渲染 ${e.target.checked ? '开启 (ratio ' + canvas.ratio + ')' : '关闭 (ratio 1)'}`, 'hl');
+    });
+
+    // ---------- 粒子 ----------
+    const circles = [];
+    let speedScale = 1;
+    let sizeScale = 1;
+    const MAX_BALLS = 800;
+
+    function makeBall() {
+      const baseR = 6 + Math.random() * 14;
+      const r = baseR * sizeScale;
+      const c = new Shape.Circle({
+        x: Math.random() * (WIDTH - r * 2),
+        y: Math.random() * (HEIGHT - r * 2),
+        width: r * 2,
+        height: r * 2,
+        style: { fillStyle: `hsl(${Math.floor(Math.random() * 360)}, 72%, 56%)` },
+      });
+      c.zIndex = -r;
+      c.node = {
+        vx: (Math.random() - 0.5) * 260,
+        vy: (Math.random() - 0.5) * 260,
+        baseR,
+        baseColor: c.style.getConfig().fillStyle,
+        flash: 0,
+      };
+      return c;
+    }
+
+    function addBalls(n) {
+      const room = MAX_BALLS - circles.length;
+      const count = Math.max(0, Math.min(n, room));
+      for (let i = 0; i < count; i += 1) {
+        const c = makeBall();
+        circles.push(c);
+        scene.add(c);
+      }
+      refreshCount();
+      log(count > 0 ? `添加 ${count} 个小球` : `已达粒子上限 ${MAX_BALLS}`, 'hl');
+    }
+
+    function removeBalls(n) {
+      let removed = 0;
+      while (removed < n && circles.length > 0) {
+        const c = circles.pop();
+        if (selected === c) selectShape(null);
+        scene.remove(c);
+        removed += 1;
+      }
+      refreshCount();
+      log(`移除 ${removed} 个小球`, 'hl');
+    }
+
+    function refreshCount() {
+      document.getElementById('ball-count').textContent = circles.length;
+    }
+
+    // ---------- 装饰图形 ----------
+    const decorations = [];
+    for (let i = 0; i < 6; i += 1) {
+      const size = 70 + i * 26;
+      const x = 120 + i * 150;
+      const y = 110 + (i % 3) * 150;
+      const hue = i * 60;
+      const style = {
+        fillStyle: `hsla(${hue}, 60%, 60%, 0.14)`,
+        strokeStyle: `hsla(${hue}, 60%, 50%, 0.5)`,
+        lineWidth: 2,
+      };
+      const s = i % 2 === 0
+        ? new Shape.Rectangle({ x, y, width: size, height: size, rounds: 14, style })
+        : new Shape.Triangle({ x, y, width: size, height: size, style });
+      s.zIndex = -1000;
+      s.node = { spin: (i % 2 === 0 ? 1 : -1) * (0.4 + i * 0.08) };
+      decorations.push(s);
+    }
+
+    // ---------- 场景 ----------
+    let elastic = true;
+    const scene = new Core.Scene({
+      canvas,
+      engine: { mode: 'fixed', targetFPS: 60 },
+      quadtree: { splitChildren: 8, maxDepth: 6, minSize: 16 },
+      onUpdate: (timestep) => {
+        const dt = timestep / 1000;
+
+        for (const d of decorations) d.rotate += d.node.spin * dt;
+
+        for (const c of circles) {
+          c.x += c.node.vx * speedScale * dt;
+          c.y += c.node.vy * speedScale * dt;
+
+          if (c.x < 0) { c.x = 0; c.node.vx = Math.abs(c.node.vx); }
+          if (c.y < 0) { c.y = 0; c.node.vy = Math.abs(c.node.vy); }
+          if (c.x + c.width > WIDTH) { c.x = WIDTH - c.width; c.node.vx = -Math.abs(c.node.vx); }
+          if (c.y + c.height > HEIGHT) { c.y = HEIGHT - c.height; c.node.vy = -Math.abs(c.node.vy); }
+
+          if (c.node.flash > 0) {
+            c.node.flash -= 1;
+            if (c.node.flash === 0) c.style.setFill(c.node.baseColor);
+          }
+        }
+      },
+      onCollide: (a, b) => {
+        if (a.type !== 'circle' || b.type !== 'circle') return;
+
+        if (elastic) {
+          const dx = b.centerX - a.centerX;
+          const dy = b.centerY - a.centerY;
+          const dist = Math.hypot(dx, dy) || 1;
+          const overlap = a.radius + b.radius - dist;
+          if (overlap > 0) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            a.x -= (nx * overlap) / 2;
+            a.y -= (ny * overlap) / 2;
+            b.x += (nx * overlap) / 2;
+            b.y += (ny * overlap) / 2;
+          }
+          const tvx = a.node.vx;
+          const tvy = a.node.vy;
+          a.node.vx = b.node.vx;
+          a.node.vy = b.node.vy;
+          b.node.vx = tvx;
+          b.node.vy = tvy;
+        }
+
+        a.style.setFill('#ff2d55');
+        b.style.setFill('#ff2d55');
+        a.node.flash = 5;
+        b.node.flash = 5;
+      },
+    });
+
+    for (const d of decorations) scene.add(d);
+    addBalls(240);
+    scene.start();
+
+    // ---------- 功能：FPS 限制 ----------
+    const FPS_OPTIONS = [0, 60, 120, 240];
+    const fpsGroup = document.getElementById('fps-group');
+
+    function setFps(fps) {
+      if (fps === 0) {
+        scene.engine.setMode('unlimited');
+        log('FPS 限制 -> 不限制（unlimited 插值）', 'hl');
+      } else {
+        scene.engine.setMode('fixed', fps);
+        log(`FPS 限制 -> ${fps}`, 'hl');
+      }
+      fpsGroup.querySelectorAll('.seg-btn').forEach((b) => {
+        b.classList.toggle('active', Number(b.dataset.fps) === fps);
+      });
+    }
+
+    FPS_OPTIONS.forEach((fps) => {
+      const btn = document.createElement('button');
+      btn.className = 'seg-btn';
+      btn.dataset.fps = String(fps);
+      btn.textContent = fps === 0 ? '不限' : String(fps);
+      if (fps === 60) btn.classList.add('active');
+      btn.addEventListener('click', () => setFps(fps));
+      fpsGroup.appendChild(btn);
+    });
+
+    // ---------- 功能：小球添加/减少 ----------
+    document.getElementById('ball-add').addEventListener('click', () => addBalls(10));
+    document.getElementById('ball-del').addEventListener('click', () => removeBalls(10));
+    document.getElementById('ball-clear').addEventListener('click', () => {
+      const n = circles.length;
+      circles.length = 0;
+      scene.clear();
+      for (const d of decorations) scene.add(d);
+      selectShape(null);
+      refreshCount();
+      log(`清空 ${n} 个小球`, 'hl');
+    });
+
+    // ---------- 功能：弹性碰撞开关 ----------
+    function setElastic(v) {
+      elastic = v;
+      document.getElementById('elastic').checked = v;
+      log(`弹性碰撞 ${v ? '开启' : '关闭'}${v ? '' : '（粒子穿过，仅闪烁提示）'}`, 'hl');
+    }
+    document.getElementById('elastic').addEventListener('change', (e) => setElastic(e.target.checked));
+
+    // ---------- 功能：速度 / 大小 调节 ----------
+    function applySizeScale() {
+      for (const c of circles) {
+        const r = c.node.baseR * sizeScale;
+        c.width = r * 2;
+        c.height = r * 2;
+        c.zIndex = -r;
+      }
+      if (selected) renderProps(selected);
+    }
+
+    const speedEl = document.getElementById('speed');
+    const sizeEl = document.getElementById('size');
+
+    function setSpeed(v) {
+      speedScale = v;
+      speedEl.value = String(v);
+      document.getElementById('speed-val').textContent = `${speedScale.toFixed(1)}x`;
+    }
+
+    function setSize(v) {
+      sizeScale = v;
+      sizeEl.value = String(v);
+      applySizeScale();
+      document.getElementById('size-val').textContent = `${sizeScale.toFixed(1)}x`;
+    }
+
+    speedEl.addEventListener('input', () => setSpeed(Number(speedEl.value)));
+    speedEl.addEventListener('change', () => log(`速度倍率 -> ${speedScale.toFixed(1)}x`, 'hl'));
+
+    sizeEl.addEventListener('input', () => setSize(Number(sizeEl.value)));
+    sizeEl.addEventListener('change', () => log(`大小倍率 -> ${sizeScale.toFixed(1)}x`, 'hl'));
+
+    // ---------- 选中与属性 ----------
+    let selected = null;
+    const propsEl = document.getElementById('props');
+
+    function renderPropsEmpty() {
+      propsEl.innerHTML = '<div class="props-empty">点击粒子查看 / 编辑属性</div>';
+    }
+
+    function selectShape(shape) {
+      if (selected) selected.style.update({ strokeStyle: undefined, lineWidth: 1 });
+      selected = shape;
+      if (selected) {
+        selected.style.update({ strokeStyle: '#ffffff', lineWidth: 2 });
+        renderProps(selected);
+      } else {
+        renderPropsEmpty();
+      }
+    }
+
+    function renderProps(c) {
+      propsEl.innerHTML =
+        `<div><span class="k">类型</span> ${c.type}　<span class="k">颜色</span> ${c.node.baseColor}</div>` +
+        `<div class="prop-grid">` +
+        `<label>X <input id="prop-x" type="number" value="${c.x.toFixed(0)}"></label>` +
+        `<label>Y <input id="prop-y" type="number" value="${c.y.toFixed(0)}"></label>` +
+        `<label>半径 <input id="prop-r" type="number" value="${c.radius.toFixed(1)}" step="1"></label>` +
+        `<label>vx <input id="prop-vx" type="number" value="${c.node.vx.toFixed(0)}"></label>` +
+        `<label>vy <input id="prop-vy" type="number" value="${c.node.vy.toFixed(0)}"></label>` +
+        `</div>` +
+        `<div><span class="k">zIndex</span> ${c.zIndex}</div>`;
+
+      document.getElementById('prop-x').addEventListener('input', (e) => { c.x = Number(e.target.value) || 0; });
+      document.getElementById('prop-y').addEventListener('input', (e) => { c.y = Number(e.target.value) || 0; });
+      document.getElementById('prop-r').addEventListener('input', (e) => {
+        const r = Math.max(1, Number(e.target.value) || 1);
+        c.node.baseR = r / sizeScale;
+        c.width = r * 2;
+        c.height = r * 2;
+        c.zIndex = -r;
+      });
+      document.getElementById('prop-vx').addEventListener('input', (e) => { c.node.vx = Number(e.target.value) || 0; });
+      document.getElementById('prop-vy').addEventListener('input', (e) => { c.node.vy = Number(e.target.value) || 0; });
+    }
+
+    renderPropsEmpty();
+
+    canvas.on('click', (e) => {
+      const x = e.offsetX;
+      const y = e.offsetY;
+      let best = null;
+      for (const c of circles) {
+        const dx = x - c.centerX;
+        const dy = y - c.centerY;
+        if (dx * dx + dy * dy <= c.radius * c.radius) {
+          if (!best || c.zIndex > best.zIndex) best = c;
+        }
+      }
+      selectShape(best);
+      if (best) log(`选中小球 @ (${best.x.toFixed(0)}, ${best.y.toFixed(0)})`);
+    });
+
+    // ---------- 日志 ----------
+    function log(msg, cls = '') {
+      const el = document.getElementById('log');
+      const line = document.createElement('div');
+      const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      line.innerHTML = `<span class="t">${t}</span><span class="${cls}"></span>`;
+      line.lastChild.textContent = msg;
+      el.appendChild(line);
+      while (el.children.length > 200) el.removeChild(el.firstChild);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // ---------- 统计 ----------
+    const statsEl = document.getElementById('stats');
+    const statsTopEl = document.getElementById('stats-top');
+    setInterval(() => {
+      const s = scene.engine.getStats();
+      statsTopEl.textContent =
+        `FPS ${s.fps.toFixed(0)} · 图形 ${scene.count} · 碰撞/步 ${scene.collisionCount}`;
+      statsEl.textContent =
+        `FPS ${s.fps.toFixed(0)} · 目标 ${s.targetFPS}\n` +
+        `图形 ${scene.count} · 步长 ${s.timestep.toFixed(1)}ms\n` +
+        `碰撞/步 ${scene.collisionCount} · 更新/帧 ${s.updatesPerFrame}\n` +
+        `物理 ${s.physicsTime.toFixed(2)}ms · 渲染 ${s.renderTime.toFixed(2)}ms`;
+      sampleFps();
+    }, 250);
+
+    // ---------- 运行 / 暂停 ----------
+    let running = true;
+    const runBtn = document.getElementById('toggle-run');
+    function setRunning(v) {
+      running = v;
+      runBtn.textContent = v ? '暂停' : '继续';
+      runBtn.classList.toggle('paused', !v);
+      if (v) scene.engine.resume();
+      else scene.engine.pause();
+      log(v ? '已继续' : '已暂停', 'hl');
+    }
+    runBtn.addEventListener('click', () => setRunning(!running));
+
+    // ---------- FPS 折线图 ----------
+    const FPS_SAMPLES = 120;
+    const fpsHistory = new Float32Array(FPS_SAMPLES);
+    let fpsHead = 0;
+    let fpsCount = 0;
+    const chartEl = document.getElementById('fps-chart');
+    const chartCtx = chartEl.getContext('2d');
+    const CHART_W = 272;
+    const CHART_H = 64;
+
+    function ensureChartSize() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(CHART_W * dpr);
+      const h = Math.round(CHART_H * dpr);
+      if (chartEl.width !== w || chartEl.height !== h) {
+        chartEl.width = w;
+        chartEl.height = h;
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+    }
+
+    function drawFpsChart() {
+      ensureChartSize();
+      const ctx = chartCtx;
+      ctx.clearRect(0, 0, CHART_W, CHART_H);
+
+      if (fpsCount < 2) {
+        ctx.fillStyle = '#55637a';
+        ctx.font = '12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('FPS 采样中…', CHART_W / 2, CHART_H / 2);
+        return;
+      }
+
+      const target = scene.engine.getStats().targetFPS;
+      let maxSample = 0;
+      for (let i = 0; i < fpsCount; i += 1) maxSample = Math.max(maxSample, fpsHistory[i]);
+      const ymax = Math.max(90, Math.ceil(Math.max(maxSample, target) / 30) * 30);
+
+      const pad = 6;
+      const plotH = CHART_H - pad * 2;
+
+      // 目标 FPS 参考线（虚线）
+      if (target > 0 && target < ymax) {
+        const y = CHART_H - pad - (target / ymax) * plotH;
+        ctx.strokeStyle = 'rgba(79, 140, 255, 0.35)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(CHART_W, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      const n = fpsCount;
+      const startIdx = (fpsHead - n + FPS_SAMPLES) % FPS_SAMPLES;
+      const stepX = CHART_W / (FPS_SAMPLES - 1);
+
+      const xy = (i) => {
+        const v = fpsHistory[(startIdx + i) % FPS_SAMPLES];
+        return [i * stepX, CHART_H - pad - (v / ymax) * plotH];
+      };
+
+      // 面积填充
+      ctx.beginPath();
+      for (let i = 0; i < n; i += 1) {
+        const [x, y] = xy(i);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.lineTo((n - 1) * stepX, CHART_H - pad);
+      ctx.lineTo(0, CHART_H - pad);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, 0, CHART_H);
+      grad.addColorStop(0, 'rgba(79, 140, 255, 0.28)');
+      grad.addColorStop(1, 'rgba(79, 140, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // 折线
+      ctx.beginPath();
+      for (let i = 0; i < n; i += 1) {
+        const [x, y] = xy(i);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      const latest = fpsHistory[(fpsHead - 1 + FPS_SAMPLES) % FPS_SAMPLES];
+      const color = latest >= 50 ? '#4f8cff' : latest >= 30 ? '#ffb020' : '#ff2d55';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // 当前值
+      ctx.fillStyle = color;
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(`${Math.round(latest)}`, pad + 2, CHART_H - pad - 6);
+    }
+
+    function sampleFps() {
+      const s = scene.engine.getStats();
+      fpsHistory[fpsHead] = running ? s.fps : 0;
+      fpsHead = (fpsHead + 1) % FPS_SAMPLES;
+      fpsCount = Math.min(FPS_SAMPLES, fpsCount + 1);
+      drawFpsChart();
+    }
+
+    // ---------- 对外钩子（供 chrome-devtools-mcp / 调试 / 自动化使用） ----------
+    window.__tig = {
+      scene,
+      get count() { return circles.length; },
+      addBalls,
+      removeBalls,
+      setFps,
+      setSpeed,
+      setSize,
+      setElastic,
+      setTheme,
+      setGrid,
+      setRunning,
+      getStats: () => scene.engine.getStats(),
+    };
+
+    log('示例已启动 · 240 个粒子 · 固定时间步长 60FPS', 'hl');
+  </script>
+</html>

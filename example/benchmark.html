@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIG-Core · 性能基准</title>
+    <link rel="stylesheet" href="./common.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>TIG-Core<span class="sub">· 性能基准</span></div>
+      <nav class="nav">
+        <a href="./index.html">演练场</a>
+        <a href="./shapes.html">图形</a>
+        <a href="./bezier.html">贝塞尔</a>
+        <a href="./benchmark.html" class="active">性能</a>
+        <a href="./scene.html">Scene</a>
+      </nav>
+      <span class="stats push" id="stats"></span>
+    </header>
+
+    <main class="stage">
+      <canvas class="canvas"></canvas>
+    </main>
+
+    <div class="results" id="results" style="display: none;"></div>
+
+    <footer class="panel">
+      <div class="group">
+        <span class="label">粒子数量</span>
+        <input type="range" class="range" id="count" min="100" max="5000" step="100" value="500">
+        <span class="value" id="count-val">500</span>
+      </div>
+      <div class="group">
+        <span class="label">四叉树碰撞</span>
+        <label class="switch">
+          <input type="checkbox" id="collision" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="group">
+        <span class="label">模式</span>
+        <div class="seg" id="mode-group"></div>
+      </div>
+      <div class="group">
+        <button class="btn" id="pause">暂停</button>
+      </div>
+      <div class="group">
+        <button class="btn primary" id="run">开始基准（5s）</button>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { Core, Shape } from '../src/index';
+
+      const W = 900;
+      const H = 560;
+      const canvas = new Core.Canvas({
+        selectors: '.canvas', width: W, height: H, ratio: window.devicePixelRatio || 1,
+      });
+
+      const quadtree = new Core.QuadTree({
+        point: { x: 0, y: 0 }, size: { width: W, height: H },
+        splitChildren: 8, maxDepth: 8, minSize: 16,
+      });
+
+      let circles = [];
+      let count = 500;
+      let collisionEnabled = true;
+      let stepCollisions = 0;
+
+      function spawn() {
+        circles = [];
+        for (let i = 0; i < count; i += 1) {
+          const r = 2 + Math.random() * 5;
+          const c = new Shape.Circle({
+            x: Math.random() * (W - r * 2),
+            y: Math.random() * (H - r * 2),
+            width: r * 2, height: r * 2,
+            style: { fillStyle: `hsl(${(i * 37) % 360}, 70%, 58%)` },
+          });
+          c.node = { vx: (Math.random() - 0.5) * 240, vy: (Math.random() - 0.5) * 240 };
+          circles.push(c);
+        }
+      }
+
+      const engine = new Core.Engine({ mode: 'fixed' });
+      engine.setCallbacks({
+        onUpdate: (timestep) => {
+          const dt = timestep / 1000;
+          for (const c of circles) {
+            c.x += c.node.vx * dt;
+            c.y += c.node.vy * dt;
+            if (c.x < 0) { c.x = 0; c.node.vx = Math.abs(c.node.vx); }
+            if (c.y < 0) { c.y = 0; c.node.vy = Math.abs(c.node.vy); }
+            if (c.x + c.width > W) { c.x = W - c.width; c.node.vx = -Math.abs(c.node.vx); }
+            if (c.y + c.height > H) { c.y = H - c.height; c.node.vy = -Math.abs(c.node.vy); }
+          }
+
+          // 四叉树碰撞检测
+          let hits = 0;
+          if (collisionEnabled) {
+            quadtree.clear();
+            for (const c of circles) quadtree.insert(c);
+            for (const c of circles) {
+              for (const other of quadtree.query(c)) {
+                if (c.collision(other)) hits += 1;
+              }
+            }
+            hits /= 2; // 每对计数两次
+          }
+          stepCollisions = hits;
+          if (benchmarking) totalCollisions += hits;
+        },
+        onRender: () => {
+          canvas.clear();
+          for (const c of circles) c.draw(canvas.context);
+        },
+      });
+
+      spawn();
+      engine.start();
+
+      // 粒子数量
+      const countEl = document.getElementById('count');
+      countEl.addEventListener('input', () => {
+        count = Number(countEl.value);
+        document.getElementById('count-val').textContent = count;
+      });
+      countEl.addEventListener('change', () => spawn());
+
+      // 碰撞开关
+      document.getElementById('collision').addEventListener('change', (e) => {
+        collisionEnabled = e.target.checked;
+      });
+
+      // 模式
+      const modeGroup = document.getElementById('mode-group');
+      [['fixed', 'fixed'], ['unlimited', 'unlimited']].forEach(([key, label], i) => {
+        const btn = document.createElement('button');
+        btn.className = 'seg-btn' + (i === 0 ? ' active' : '');
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
+          engine.setMode(key);
+          modeGroup.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        });
+        modeGroup.appendChild(btn);
+      });
+
+      // 暂停 / 继续
+      const pauseBtn = document.getElementById('pause');
+      function refreshPause() {
+        pauseBtn.textContent = engine.isRunning() ? '暂停' : '继续';
+      }
+      pauseBtn.addEventListener('click', () => {
+        if (engine.isRunning()) engine.pause();
+        else engine.resume();
+        refreshPause();
+      });
+      engine.on('pause', refreshPause);
+      engine.on('resume', refreshPause);
+
+      // 实时统计
+      const statsEl = document.getElementById('stats');
+      setInterval(() => {
+        const s = engine.getStats();
+        statsEl.textContent = `FPS ${s.fps.toFixed(0)} · 帧 ${s.frameTime.toFixed(2)}ms · 物理 ${s.physicsTime.toFixed(2)}ms · 渲染 ${s.renderTime.toFixed(2)}ms · 碰撞 ${stepCollisions}`;
+      }, 250);
+
+      // 基准
+      let benchmarking = false;
+      let totalCollisions = 0;
+      const resultsEl = document.getElementById('results');
+
+      document.getElementById('run').addEventListener('click', () => {
+        if (benchmarking) return;
+        benchmarking = true;
+        totalCollisions = 0;
+        const samples = [];
+        const start = performance.now();
+
+        const timer = setInterval(() => {
+          const s = engine.getStats();
+          samples.push({
+            frameTime: s.frameTime,
+            physicsTime: s.physicsTime,
+            renderTime: s.renderTime,
+          });
+          if (performance.now() - start >= 5000) {
+            clearInterval(timer);
+            benchmarking = false;
+            showResults(samples);
+          }
+        }, 100);
+      });
+
+      function showResults(samples) {
+        const n = samples.length;
+        const avg = (arr) => arr.reduce((a, b) => a + b, 0) / n;
+        const frameTimes = samples.map((s) => s.frameTime);
+        const fpsArr = samples.map((s) => (s.frameTime > 0 ? 1000 / s.frameTime : 0));
+        const avgFrame = avg(frameTimes);
+        const avgFps = 1000 / avgFrame;
+        const minFps = Math.min(...fpsArr);
+        const maxFps = Math.max(...fpsArr);
+
+        resultsEl.style.display = 'block';
+        resultsEl.innerHTML =
+          `<b>基准结果</b> · ${count} 粒子 · 碰撞${collisionEnabled ? '开' : '关'} · 模式 ${engine.getMode()} · 采样 ${n} 次 / 5s\n` +
+          `平均 FPS <span class="hi">${avgFps.toFixed(1)}</span> · 最低 <span class="lo">${minFps.toFixed(1)}</span> · 最高 ${maxFps.toFixed(1)}\n` +
+          `平均帧时间 ${avgFrame.toFixed(2)}ms · 物理 ${avg(samples.map((s) => s.physicsTime)).toFixed(2)}ms · 渲染 ${avg(samples.map((s) => s.renderTime)).toFixed(2)}ms\n` +
+          `碰撞检测总对数（5s）≈ ${totalCollisions.toLocaleString()}`;
+      }
+    </script>
+  </body>
+</html>

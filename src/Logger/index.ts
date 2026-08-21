@@ -1,4 +1,4 @@
 import { Logger } from '../Utils';
 
-// TODO: 引擎日志
+/** 引擎通用日志记录器 */
 export const EngineLogger = new Logger({ prefix: 'Engine' });

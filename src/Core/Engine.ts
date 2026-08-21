@@ -1,43 +1,42 @@
 import { EngineLogger } from '../Logger';
-import { Decimal } from 'decimal.js';
+import { EventEmitter } from '../Lib';
+import { FixedAccumulator } from './FixedAccumulator';
+import { browserSchedulerBackend, FrameScheduler } from './FrameScheduler';
+import type { FrameSchedulerBackend } from './FrameScheduler';
+import { StatsCollector } from './StatsCollector';
+import type { MeasuredStats } from './StatsCollector';
 
 /** 渲染后回调类型 */
 export type PostRenderCallback = () => void;
 
-/** 引擎运行模式：固定时间步长或无限制模式 */
+/** 引擎运行模式：固定时间步长 / 无限制（插值）渲染 */
 export type EngineMode = 'fixed' | 'unlimited';
 
-/** 渲染回调类型 (alpha: 插值因子, deltaTime: 渲染增量时间) */
+/** 渲染回调类型 (alpha: 插值因子 0-1, deltaTime: 渲染增量时间) */
 export type RenderCallback = (alpha: number, deltaTime: number) => void;
 
-/** 更新回调类型 (timestep: 时间步长, currentTime: 当前时间) */
-export type UpdateCallback = (timestep: Decimal, currentTime: number) => void;
+/** 更新回调类型 (timestep: 固定时间步长, currentTime: 当前时间) */
+export type UpdateCallback = (timestep: number, currentTime: number) => void;
 
 /** 引擎配置接口 */
 export interface EngineConfig {
-  timestep: number;         // 基础时间步长(毫秒)
-  maxUpdates: number;       // 每帧最大物理更新次数
-  alphaClamp: number;       // alpha值钳制上限(用于插值)
-  mode: EngineMode;         // 运行模式
-  targetFPS: number;        // 目标帧率
-  enableStats: boolean;     // 是否启用统计信息收集
+  /** 固定时间步长（毫秒），默认 1000/60 ≈ 16.67ms */
+  timestep: number;
+  /** 每帧最大物理更新次数，防止“死亡螺旋” */
+  maxUpdates: number;
+  /** alpha 插值因子钳制上限 */
+  alphaClamp: number;
+  /** 运行模式 */
+  mode: EngineMode;
+  /** 目标帧率（用于统计与固定模式帧预算） */
+  targetFPS: number;
+  /** 是否启用统计信息收集 */
+  enableStats: boolean;
 }
 
 /** 引擎统计信息接口 */
-export interface EngineStats {
-  fps: number;              // 当前帧率
+export interface EngineStats extends MeasuredStats {
   targetFPS: number;        // 目标帧率
-  frameCount: number;       // 帧计数器
-  lastFpsUpdate: number;    // 上次FPS更新时间
-  deltaHistory: number[];   // 增量时间历史记录
-  jitter: number;           // 帧时间抖动值
-  averageDelta: number;     // 平均增量时间
-  minDelta: number;         // 最小增量时间
-  maxDelta: number;         // 最大增量时间
-  updatesPerFrame: number;  // 每帧物理更新次数
-  frameTime: number;        // 整帧耗时
-  renderTime: number;       // 渲染耗时
-  physicsTime: number;      // 物理更新耗时
   accumulator: number;      // 物理累加器值
   alpha: number;            // 渲染插值因子
   running: boolean;         // 引擎运行状态
@@ -47,404 +46,359 @@ export interface EngineStats {
 
 /** 回调集合接口 */
 export interface CallbackSet {
-  onUpdate?: UpdateCallback;      // 物理更新回调
-  onRender?: RenderCallback;      // 渲染回调
+  onUpdate?: UpdateCallback;        // 物理更新回调
+  onRender?: RenderCallback;        // 渲染回调
   onPostRender?: PostRenderCallback; // 渲染后回调
 }
 
-/** 详细统计信息接口 (扩展自EngineStats) */
+/** 详细统计信息接口 (扩展自 EngineStats) */
 export interface DetailedStats extends EngineStats {
-  frameBudget: string;     // 帧预算时间(字符串格式)
+  frameBudget: string;     // 帧预算时间（字符串格式）
   physicsLoad: string;     // 物理负载百分比
   renderLoad: string;      // 渲染负载百分比
   efficiency: string;      // 效率百分比
   timeScale: number;       // 时间缩放因子
 }
 
-/** 引擎运行时状态 */
-interface EngineState {
-  running: boolean;
-  lastTime: number;
-  lastFrameTime: number;
-  frameId: number | null;
-  accumulator: Decimal;    // 使用Decimal保持精度
-  alpha: number;
-  timeScale: Decimal;      // 使用Decimal保持精度
-  stats: EngineStats;
-  historyIndex: number;    // 循环缓冲区索引
-  historyFull: boolean;    // 循环缓冲区是否已满
+/** 引擎生命周期事件集合 */
+export interface EngineEvents {
+  'start': undefined;
+  'stop': undefined;
+  'pause': undefined;
+  'resume': undefined;
+  'mode-changed': { mode: EngineMode; targetFPS: number };
 }
 
 /** 默认引擎配置 */
 const DEFAULT_CONFIG: Required<EngineConfig> = {
-  timestep: 1000 / 60,     // 60FPS对应的时间步长(约16.67ms)
-  maxUpdates: 10,          // 每帧最多10次物理更新
-  alphaClamp: 1.0,         // alpha最大值
+  timestep: 1000 / 60,     // 60FPS 对应的时间步长（约 16.67ms）
+  maxUpdates: 10,          // 每帧最多 10 次物理更新
+  alphaClamp: 1.0,         // alpha 最大值
   mode: 'fixed',           // 默认固定时间步长模式
-  targetFPS: 60,           // 目标60FPS
+  targetFPS: 60,           // 目标 60FPS
   enableStats: true,       // 默认启用统计
 };
 
-const STATS_HISTORY_SIZE = 240;               // 统计历史数据大小
-const STATS_FPS_WINDOW = 60;                  // FPS计算窗口大小
-const MAX_PHYSICS_TIME_MS = 8;                // 物理更新最大时间(毫秒)
-const MAX_ACCUMULATOR_OVERRUN = 10;           // 累加器最大溢出倍数
-const FIXED_ACCUMULATOR_RESET_THRESHOLD = 5;  // 固定模式累加器重置阈值
-const MAX_TIME_SCALE = 5.0;                   // 最大时间缩放
-const MIN_TIME_SCALE = 0.1;                   // 最小时间缩放
-const DETAILED_STATS_INTERVAL = 1000;         // 详细统计更新间隔(ms)
+const MAX_TIME_SCALE = 5.0;       // 最大时间缩放
+const MIN_TIME_SCALE = 0.1;       // 最小时间缩放
 
-// ================== Engine 类 ==================
-
-export class Engine {
-  // 引擎配置 (合并默认配置和用户配置)
+/**
+ * 固定时间步长引擎
+ *
+ * 核心思路（来自 “Fix Your Timestep!”）：
+ * 1. 使用累加器累计真实经过的时间；
+ * 2. 物理/逻辑更新始终以固定时间步长执行，与渲染帧率解耦，
+ *    从而修正高刷显示器上游戏被加速的问题；
+ * 3. 渲染时用 alpha 插值因子在相邻两次物理状态之间插值，保证画面平滑。
+ *
+ * 架构：引擎由三个低耦合模块组合而成
+ * - `FrameScheduler`：帧循环调度（rAF + fixed 限帧）；
+ * - `FixedAccumulator`：固定时间步长累加（纯逻辑）；
+ * - `StatsCollector`：性能统计收集（纯逻辑）。
+ *
+ * 两种模式：
+ * - `fixed`：渲染不插值（alpha=0），画面严格对应最近的物理状态；
+ * - `unlimited`：渲染按刷新率插值（alpha∈[0,1]），高刷下更平滑。
+ */
+export class Engine extends EventEmitter<EngineEvents> {
+  /** 引擎配置（合并默认配置和用户配置） */
   private config: Required<EngineConfig>;
-  // 运行时状态
-  private state: EngineState;
-  // 预计算的Decimal值 (优化性能)
-  private precomputed: {
-    timestep: Decimal;
-    minFrameTime: Decimal;
-    maxAccumulator: Decimal;
-    fixedResetThreshold: Decimal;
-    timestepTimes5: Decimal;
-    timestepTimes2: Decimal;
-  };
-  // 回调函数引用
+
+  /** 回调函数引用 */
   private callbacks: CallbackSet = {};
-  // 详细统计缓存
-  private detailedStatsCache: DetailedStats | null = null;
-  private lastDetailedStatsUpdate = 0;
+
+  // 组合的模块
+  private readonly accumulator: FixedAccumulator;
+  private readonly scheduler: FrameScheduler;
+  private readonly stats = new StatsCollector();
+  private readonly backend: FrameSchedulerBackend;
+
+  // 运行时状态
+  private lastTime = 0;
+  private alpha = 0;
+  private timeScale = 1.0;
+  private paused = false;
 
   /**
    * 构造函数
-   * @param userConfig 用户配置 (可选)
+   * @param userConfig 用户配置（可选）
+   * @param backend 帧调度后端（可选，默认浏览器后端；测试可注入假后端脱离浏览器）
    */
-  constructor(userConfig: Partial<EngineConfig> = {}) {
-    // 合并默认配置
+  constructor(
+    userConfig: Partial<EngineConfig> = {},
+    backend: FrameSchedulerBackend = browserSchedulerBackend,
+  ) {
+    super();
     this.config = { ...DEFAULT_CONFIG, ...userConfig };
+    this.backend = backend;
 
-    // 预计算Decimal值 (避免在热路径中重复创建)
-    const timestep = new Decimal(this.config.timestep);
-    const minFrameTime = new Decimal(1000).div(this.config.targetFPS);
+    this.accumulator = new FixedAccumulator(
+      this.config.timestep,
+      this.config.maxUpdates,
+      this.config.alphaClamp,
+    );
+    this.scheduler = new FrameScheduler(
+      (timestamp) => this.frame(timestamp),
+      this.config.mode,
+      this.config.targetFPS,
+      backend,
+    );
 
-    this.precomputed = {
-      timestep: timestep,
-      minFrameTime: minFrameTime,
-      maxAccumulator: timestep.times(MAX_ACCUMULATOR_OVERRUN),
-      fixedResetThreshold: timestep.times(FIXED_ACCUMULATOR_RESET_THRESHOLD),
-      timestepTimes5: timestep.times(5),
-      timestepTimes2: timestep.times(2),
-    };
-
-    // 初始化状态
-    this.state = this.initState();
     EngineLogger.log(`引擎初始化 - 模式: ${this.config.mode}, 目标FPS: ${this.config.targetFPS}`);
   }
 
-  /** 初始化状态 */
-  private initState(): EngineState {
-    return {
-      running: false,
-      lastTime: 0,
-      lastFrameTime: 0,
-      frameId: null,
-      accumulator: new Decimal(0),
-      alpha: 0,
-      timeScale: new Decimal(1.0),
-      stats: {
-        fps: 0,
-        targetFPS: this.config.targetFPS,
-        frameCount: 0,
-        lastFpsUpdate: 0,
-        deltaHistory: new Array(STATS_HISTORY_SIZE).fill(0),
-        jitter: 0,
-        averageDelta: 0,
-        minDelta: Infinity,
-        maxDelta: 0,
-        updatesPerFrame: 0,
-        frameTime: 0,
-        renderTime: 0,
-        physicsTime: 0,
-        accumulator: 0,
-        alpha: 0,
-        running: false,
-        mode: this.config.mode,
-        timestep: this.config.timestep,
-      },
-      historyIndex: 0,
-      historyFull: false,
-    };
-  }
-
   /**
-   * 启动引擎
-   * @returns Promise<void>
+   * 启动引擎（重置累加器与统计）
+   * @fires Engine#start
    */
-  async start(): Promise<void> {
-    if (this.state.running) return;
+  start(): void {
+    if (this.scheduler.isRunning) return;
 
-    this.state.running = true;
-    this.state.stats.running = true;
-    this.state.lastTime = performance.now();
-    this.state.lastFrameTime = this.state.lastTime;
-    this.state.accumulator = new Decimal(0);
+    this.paused = false;
+    this.lastTime = this.backend.now();
+    this.accumulator.reset();
+    this.alpha = 0;
+    this.stats.reset(this.lastTime);
 
-    // 启动动画循环
-    this.state.frameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+    this.scheduler.start();
+    this.emit('start', undefined);
     EngineLogger.log(`引擎启动 - 模式: ${this.config.mode}`);
   }
 
-  /** 停止引擎 */
+  /**
+   * 停止引擎（保留状态，可继续 resume）
+   * @fires Engine#stop
+   */
   stop(): void {
-    if (!this.state.running) return;
+    if (!this.scheduler.isRunning) return;
 
-    this.state.running = false;
-    this.state.stats.running = false;
-
-    // 取消动画帧
-    if (this.state.frameId) {
-      cancelAnimationFrame(this.state.frameId);
-      this.state.frameId = null;
-    }
-
+    this.scheduler.stop();
+    this.paused = false;
+    this.emit('stop', undefined);
     EngineLogger.log('引擎停止');
   }
 
   /**
-   * 游戏主循环
-   * @param currentTime 当前时间戳 (来自requestAnimationFrame)
+   * 暂停引擎（等同 stop，但标记暂停状态）
+   * @fires Engine#pause
    */
-  private gameLoop(currentTime: number): void {
-    if (!this.state.running) return;
+  pause(): void {
+    if (!this.scheduler.isRunning) return;
 
-    const frameStart = performance.now();
-
-    // 1. 计算增量时间
-    const rawDeltaTime = currentTime - this.state.lastTime;
-    this.state.lastTime = currentTime;
-
-    // 2. 应用帧控制 (固定模式下限制帧率)
-    const deltaTime = this.applyFrameControl(rawDeltaTime);
-
-    // 3. 更新统计信息（低频）
-    if (this.config.enableStats) {
-      this.updateStats(deltaTime);
-    }
-
-    // 4. 应用时间缩放并累加
-    const scaledDelta = new Decimal(deltaTime).times(this.state.timeScale);
-    const clampedDelta = Decimal.min(scaledDelta, this.precomputed.timestepTimes5); // 限制最大增量
-    this.state.accumulator = this.state.accumulator.plus(clampedDelta);
-    this.state.stats.accumulator = this.state.accumulator.toNumber();
-
-    // 5. 执行物理更新
-    const physicsStart = performance.now();
-    const updateCount = this.executePhysics(physicsStart);
-    this.state.stats.physicsTime = performance.now() - physicsStart;
-    this.state.stats.updatesPerFrame = updateCount;
-
-    // 6. 计算渲染插值因子
-    this.calculateAlpha();
-    this.state.stats.alpha = this.state.alpha;
-
-    // 7. 执行渲染
-    const renderStart = performance.now();
-    this.executeRender();
-    this.state.stats.renderTime = performance.now() - renderStart;
-
-    // 8. 执行渲染后回调（带错误处理）
-    this.safeExecute(this.callbacks.onPostRender, 'onPostRender');
-
-    // 9. 记录整帧耗时
-    this.state.stats.frameTime = performance.now() - frameStart;
-
-    // 10. 处理累加器溢出
-    this.handleAccumulatorOverflow();
-
-    // 11. 安排下一帧
-    this.scheduleNextFrame();
+    this.paused = true;
+    this.scheduler.stop();
+    this.emit('pause', undefined);
+    EngineLogger.log('引擎暂停');
   }
 
   /**
-   * 执行物理更新
-   * @param physicsStart 物理更新开始时间 (用于超时检测)
-   * @returns 实际执行的更新次数
+   * 恢复运行（不重置累加器/统计，从暂停处继续）
+   * @fires Engine#resume
    */
-  private executePhysics(physicsStart: number): number {
-    let updateCount = 0;
+  resume(): void {
+    if (this.scheduler.isRunning) return;
 
-    // 当累加器 >= 时间步长 且 未达最大更新次数 时循环更新
-    while (this.state.accumulator.gte(this.precomputed.timestep) &&
-    updateCount < this.config.maxUpdates) {
-      // 执行更新回调（带错误处理）
+    this.paused = false;
+    this.lastTime = this.backend.now();
+    this.scheduler.start();
+    this.emit('resume', undefined);
+    EngineLogger.log('引擎恢复');
+  }
+
+  /**
+   * 手动推进若干次物理更新（用于暂停状态下的单步调试）
+   * @param steps 执行步数
+   */
+  step(steps = 1): void {
+    const n = Math.max(0, Math.floor(steps));
+    for (let i = 0; i < n; i += 1) {
       this.safeExecute(
-          () => this.callbacks.onUpdate?.(this.precomputed.timestep, performance.now()),
-          'onUpdate',
+        () => this.callbacks.onUpdate?.(this.config.timestep, this.backend.now()),
+        'onUpdate',
       );
-
-      this.state.accumulator = this.state.accumulator.minus(this.precomputed.timestep);
-      updateCount++;
-
-      // 超时保护
-      if (performance.now() - physicsStart > MAX_PHYSICS_TIME_MS) {
-        EngineLogger.warn('物理更新超时，跳过剩余更新');
-        break;
-      }
     }
+  }
 
-    return updateCount;
+  /**
+   * 游戏主循环（由 FrameScheduler 驱动）
+   * @param currentTime 当前时间戳（来自 requestAnimationFrame）
+   */
+  private frame(currentTime: number): void {
+    const frameStart = this.backend.now();
+
+    // 1. 计算增量时间（毫秒）
+    const rawDeltaTime = currentTime - this.lastTime;
+    this.lastTime = currentTime;
+
+    // 2. 应用时间缩放，并限制最大增量（避免切后台后过度追赶）
+    const scaledDelta = rawDeltaTime * this.timeScale;
+    const deltaTime = Math.min(scaledDelta, this.config.timestep * 5);
+
+    // 3. 固定时间步长物理更新（由累加器驱动）
+    const physicsStart = this.backend.now();
+    const updatesPerFrame = this.accumulator.advance(deltaTime, this.backend.now(), (timestep, now) => {
+      this.safeExecute(() => this.callbacks.onUpdate?.(timestep, now), 'onUpdate');
+    });
+    const physicsTime = this.backend.now() - physicsStart;
+
+    // 4. 计算渲染插值因子
+    this.alpha = this.computeAlpha();
+
+    // 5. 执行渲染
+    const renderStart = this.backend.now();
+    this.executeRender();
+    const renderTime = this.backend.now() - renderStart;
+
+    // 6. 渲染后回调
+    this.safeExecute(this.callbacks.onPostRender, 'onPostRender');
+
+    // 7. 统计
+    const frameTime = this.backend.now() - frameStart;
+    if (this.config.enableStats) {
+      this.stats.record(deltaTime, this.backend.now(), frameTime, physicsTime, renderTime, updatesPerFrame);
+    }
   }
 
   /** 执行渲染 */
   private executeRender(): void {
     if (!this.callbacks.onRender) return;
-
-    if (this.config.mode === 'fixed') {
-      // 固定模式：不使用插值
-      this.safeExecute(() => this.callbacks.onRender!(0, this.config.timestep), 'onRender');
-    } else {
-      // 无限制模式：使用alpha插值
-      const renderDelta = this.precomputed.timestep.toNumber() * this.state.alpha;
-      this.safeExecute(() => this.callbacks.onRender!(this.state.alpha, renderDelta), 'onRender');
-    }
+    const alpha = this.alpha;
+    this.safeExecute(() => this.callbacks.onRender!(alpha, alpha * this.config.timestep), 'onRender');
   }
 
   /** 计算渲染插值因子 alpha */
-  private calculateAlpha(): void {
-    if (this.config.mode === 'fixed') {
-      this.state.alpha = 0; // 固定模式不需要插值
+  private computeAlpha(): number {
+    if (this.config.mode === 'fixed') return 0; // 固定模式不使用插值
+    return this.accumulator.alpha;
+  }
+
+  /**
+   * 切换引擎模式
+   * @param mode 目标模式
+   * @param targetFPS 目标帧率（可选）
+   * @fires Engine#mode-changed
+   */
+  setMode(mode: EngineMode, targetFPS: number = this.config.targetFPS): void {
+    const oldMode = this.config.mode;
+    const oldTargetFPS = this.config.targetFPS;
+
+    this.config.mode = mode;
+    this.config.targetFPS = targetFPS;
+    this.scheduler.setMode(mode);
+    this.scheduler.setTargetFPS(targetFPS);
+
+    // 重置运行时状态（不重置统计）
+    this.accumulator.reset();
+    this.alpha = 0;
+    this.lastTime = this.backend.now();
+
+    this.emit('mode-changed', { mode, targetFPS });
+    EngineLogger.log(`引擎模式从 ${oldMode}(${oldTargetFPS}FPS) 切换到 ${mode}(${targetFPS}FPS)`);
+  }
+
+  /** 设置目标帧率（fixed 模式限帧） */
+  setTargetFPS(targetFPS: number): void {
+    if (!Number.isFinite(targetFPS) || targetFPS <= 0) {
+      EngineLogger.error(`目标帧率无效: ${targetFPS}`);
       return;
     }
+    this.config.targetFPS = targetFPS;
+    this.scheduler.setTargetFPS(targetFPS);
+  }
 
-    // alpha = 累加器 / 时间步长 (0.0 - 1.0)
-    const alphaDecimal = this.state.accumulator.div(this.precomputed.timestep);
-    // 钳制在 [0, alphaClamp] 范围内
-    const clampedAlpha = Decimal.max(0, Decimal.min(alphaDecimal, this.config.alphaClamp));
-    this.state.alpha = clampedAlpha.toNumber();
+  /** 设置每帧最大物理更新次数 */
+  setMaxUpdates(maxUpdates: number): void {
+    if (!Number.isFinite(maxUpdates) || maxUpdates < 1) {
+      EngineLogger.error(`最大更新次数无效: ${maxUpdates}`);
+      return;
+    }
+    this.config.maxUpdates = maxUpdates;
+    this.accumulator.setMaxUpdates(maxUpdates);
   }
 
   /**
-   * 应用帧控制 (仅固定模式)
-   * @param deltaTime 原始增量时间
-   * @returns 调整后的增量时间
+   * 设置时间缩放
+   * @param timeScale 缩放因子（0.1 - 5.0）
    */
-  private applyFrameControl(deltaTime: number): number {
-    if (this.config.mode !== 'fixed') return deltaTime;
-
-    const deltaDecimal = new Decimal(deltaTime);
-
-    // 如果太快，强制等待到最小帧时间
-    if (deltaDecimal.lt(this.precomputed.minFrameTime)) {
-      return this.precomputed.minFrameTime.toNumber();
-    }
-
-    // 如果太慢，限制最大增量时间 (避免卡顿导致过大步长)
-    if (deltaDecimal.gt(this.precomputed.minFrameTime.times(2))) {
-      return this.precomputed.minFrameTime.times(1.5).toNumber();
-    }
-
-    return deltaTime;
+  setTimeScale(timeScale: number): void {
+    this.timeScale = Math.max(MIN_TIME_SCALE, Math.min(timeScale, MAX_TIME_SCALE));
+    EngineLogger.log(`时间缩放设置为: ${this.timeScale}x`);
   }
 
-  /** 处理累加器溢出 */
-  private handleAccumulatorOverflow(): void {
-    if (this.config.mode === 'fixed' && this.state.accumulator.gt(this.precomputed.fixedResetThreshold)) {
-      // 固定模式：累加器过大时重置 (避免追赶过多帧)
-      this.state.accumulator = new Decimal(0);
-      EngineLogger.warn('固定模式累积器重置');
-    } else if (this.state.accumulator.gt(this.precomputed.maxAccumulator)) {
-      // 无限制模式：限制最大累加器值 (避免追赶过多帧)
-      this.state.accumulator = this.precomputed.timestepTimes2;
-    }
-  }
-
-  /** 安排下一帧 */
-  private scheduleNextFrame(): void {
-    if (!this.state.running) return;
-
-    if (this.config.mode === 'fixed') {
-      // 固定模式：使用setTimeout控制帧率
-      const now = performance.now();
-      const elapsed = now - this.state.lastFrameTime;
-      const waitTime = Math.max(0, this.precomputed.minFrameTime.toNumber() - elapsed);
-
-      setTimeout(() => {
-        if (this.state.running) {
-          this.state.frameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-        }
-      }, waitTime);
-
-      this.state.lastFrameTime = now + waitTime;
-    } else {
-      // 无限制模式：直接使用requestAnimationFrame
-      this.state.frameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-    }
+  /** 设置回调函数 */
+  setCallbacks(callbacks: CallbackSet): void {
+    this.callbacks = { ...callbacks };
   }
 
   /**
-   * 更新统计信息
-   * @param deltaTime 增量时间
+   * 设置时间步长
+   * @param timestep 新的时间步长（毫秒）
    */
-  private updateStats(deltaTime: number): void {
-    const now = performance.now();
-    const stats = this.state.stats;
-
-    // 使用循环缓冲区存储增量时间历史
-    stats.deltaHistory[this.state.historyIndex] = deltaTime;
-    this.state.historyIndex = (this.state.historyIndex + 1) % STATS_HISTORY_SIZE;
-    if (this.state.historyIndex === 0) this.state.historyFull = true;
-
-    // 更新FPS (低频)
-    stats.frameCount++;
-    if (now - stats.lastFpsUpdate >= STATS_FPS_WINDOW) {
-      const elapsed = now - stats.lastFpsUpdate;
-      stats.fps = (stats.frameCount / elapsed) * 1000;
-      stats.frameCount = 0;
-      stats.lastFpsUpdate = now;
+  setTimestep(timestep: number): void {
+    if (!Number.isFinite(timestep) || timestep <= 0) {
+      EngineLogger.error(`时间步长无效: ${timestep}`);
+      return;
     }
-
-    // 更新极值（每帧更新，但开销很小）
-    stats.minDelta = Math.min(stats.minDelta, deltaTime);
-    stats.maxDelta = Math.max(stats.maxDelta, deltaTime);
-
-    // 低频更新详细统计（抖动、平均值等）
-    if (now - this.lastDetailedStatsUpdate >= DETAILED_STATS_INTERVAL) {
-      this.updateDetailedStats();
-      this.lastDetailedStatsUpdate = now;
-      this.detailedStatsCache = null; // 使缓存失效
-    }
+    this.config.timestep = timestep;
+    this.accumulator.setTimestep(timestep);
+    EngineLogger.log(`时间步长调整为 ${timestep.toFixed(2)}ms`);
   }
 
-  /** 更新详细统计（抖动、平均值等） */
-  private updateDetailedStats(): void {
-    const stats = this.state.stats;
-    const history = stats.deltaHistory;
-    const count = this.state.historyFull ? STATS_HISTORY_SIZE : this.state.historyIndex;
+  /** 获取详细统计信息 */
+  getDetailedStats(): DetailedStats {
+    const frameBudget = 1000 / this.config.targetFPS;
+    const s = this.getStats();
 
-    if (count < STATS_FPS_WINDOW) return;
+    return {
+      ...s,
+      frameBudget: `${frameBudget.toFixed(2)}ms`,
+      physicsLoad: `${((s.physicsTime / frameBudget) * 100).toFixed(1)}%`,
+      renderLoad: `${((s.renderTime / frameBudget) * 100).toFixed(1)}%`,
+      efficiency: `${((s.frameTime / frameBudget) * 100).toFixed(1)}%`,
+      timeScale: this.timeScale,
+    };
+  }
 
-    // 计算平均值
-    let sum = 0;
-    for (let i = 0; i < count; i++) {
-      sum += history[i];
-    }
-    const avg = sum / count;
-    stats.averageDelta = avg;
+  /** 获取基础统计信息 */
+  getStats(): EngineStats {
+    return {
+      ...this.stats.snapshot(),
+      targetFPS: this.config.targetFPS,
+      accumulator: this.accumulator.value,
+      alpha: this.alpha,
+      running: this.scheduler.isRunning,
+      timestep: this.config.timestep,
+      mode: this.config.mode,
+    };
+  }
 
-    // 计算标准差（抖动）
-    let varianceSum = 0;
-    for (let i = 0; i < count; i++) {
-      const diff = history[i] - avg;
-      varianceSum += diff * diff;
-    }
-    stats.jitter = Math.sqrt(varianceSum / count);
+  /** 获取当前配置副本 */
+  getConfig(): Required<EngineConfig> {
+    return { ...this.config };
+  }
+
+  /** 检查引擎是否运行中 */
+  isRunning(): boolean {
+    return this.scheduler.isRunning;
+  }
+
+  /** 检查引擎是否处于暂停状态 */
+  isPaused(): boolean {
+    return this.paused;
+  }
+
+  /** 获取当前运行模式 */
+  getMode(): EngineMode {
+    return this.config.mode;
+  }
+
+  /** 获取当前时间缩放因子 */
+  getTimeScale(): number {
+    return this.timeScale;
   }
 
   /**
    * 安全执行回调（捕获错误）
-   * @param callback 回调函数
-   * @param name 回调名称（用于错误日志）
    */
   private safeExecute(callback: (() => void) | undefined, name: string): void {
     if (!callback) return;
@@ -455,132 +409,10 @@ export class Engine {
     }
   }
 
-  /**
-   * 切换引擎模式
-   * @param engineMode 目标模式
-   * @param targetFPS 目标帧率 (可选)
-   */
-  setMode(engineMode: EngineMode, targetFPS: number = 60): void {
-    const oldMode = this.config.mode;
-    const oldTargetFPS = this.config.targetFPS;
-
-    // 更新配置
-    this.config.mode = engineMode;
-    this.config.targetFPS = targetFPS;
-    this.precomputed.minFrameTime = new Decimal(1000).div(targetFPS);
-    this.state.stats.targetFPS = targetFPS;
-    this.state.stats.mode = engineMode;
-
-    // 重置状态（不停止引擎）
-    this.state.accumulator = new Decimal(0);
-    this.state.alpha = 0;
-    this.state.lastTime = performance.now();
-    this.state.lastFrameTime = this.state.lastTime;
-
-    // 重置统计
-    this.state.stats.minDelta = Infinity;
-    this.state.stats.maxDelta = 0;
-    this.state.historyIndex = 0;
-    this.state.historyFull = false;
-    this.detailedStatsCache = null;
-
-    EngineLogger.log(`引擎模式从 ${oldMode}(${oldTargetFPS}FPS) 切换到 ${engineMode}(${targetFPS}FPS)`);
-  }
-
-  /**
-   * 设置时间缩放
-   * @param timeScale 缩放因子 (0.1 - 5.0)
-   */
-  setTimeScale(timeScale: number): void {
-    // 钳制在合理范围内
-    const clampedScale = Math.max(MIN_TIME_SCALE, Math.min(timeScale, MAX_TIME_SCALE));
-    this.state.timeScale = new Decimal(clampedScale);
-    EngineLogger.log(`时间缩放设置为: ${clampedScale}x`);
-  }
-
-  /** 设置回调函数 */
-  setCallbacks(callbacks: CallbackSet): void {
-    this.callbacks = { ...callbacks };
-  }
-
-  /**
-   * 设置时间步长
-   * @param timestepMs 新的时间步长(毫秒)
-   */
-  setTimestep(timestepMs: number): void {
-    const oldTimestep = this.precomputed.timestep;
-    this.config.timestep = timestepMs;
-    this.state.stats.timestep = timestepMs;
-
-    // 重新计算预计算值
-    const newTimestep = new Decimal(timestepMs);
-    this.precomputed.timestep = newTimestep;
-    this.precomputed.timestepTimes5 = newTimestep.times(5);
-    this.precomputed.timestepTimes2 = newTimestep.times(2);
-    this.precomputed.maxAccumulator = newTimestep.times(MAX_ACCUMULATOR_OVERRUN);
-    this.precomputed.fixedResetThreshold = newTimestep.times(FIXED_ACCUMULATOR_RESET_THRESHOLD);
-
-    // 按比例转换累加器值 (保持进度比例)
-    if (oldTimestep.gt(0)) {
-      this.state.accumulator = this.state.accumulator.times(newTimestep).div(oldTimestep);
-    }
-
-    EngineLogger.log(`时间步长从 ${oldTimestep.toFixed(2)}ms 调整为 ${timestepMs.toFixed(2)}ms`);
-  }
-
-  /** 获取详细统计信息 */
-  getDetailedStats(): DetailedStats {
-    // 使用缓存避免重复计算
-    if (this.detailedStatsCache) {
-      return this.detailedStatsCache;
-    }
-
-    const frameBudget = this.precomputed.minFrameTime.toNumber();
-    const stats = this.state.stats;
-
-    // 计算负载百分比
-    const physicsPercent = (stats.physicsTime / frameBudget * 100).toFixed(1);
-    const renderPercent = (stats.renderTime / frameBudget * 100).toFixed(1);
-    const efficiency = ((stats.frameTime / frameBudget) * 100).toFixed(1);
-
-    this.detailedStatsCache = {
-      ...stats,
-      frameBudget: `${frameBudget.toFixed(2)}ms`,
-      physicsLoad: `${physicsPercent}%`,
-      renderLoad: `${renderPercent}%`,
-      efficiency: `${efficiency}%`,
-      timeScale: this.state.timeScale.toNumber(),
-    };
-
-    return this.detailedStatsCache;
-  }
-
-  /** 获取基础统计信息 */
-  getStats(): EngineStats {
-    // 返回副本防止外部修改
-    return { ...this.state.stats };
-  }
-
-  /** 检查引擎是否运行中 */
-  isRunning(): boolean {
-    return this.state.running;
-  }
-
-  /** 获取当前运行模式 */
-  getMode(): EngineMode {
-    return this.config.mode;
-  }
-
-  /** 获取当前时间缩放因子 */
-  getTimeScale(): number {
-    return this.state.timeScale.toNumber();
-  }
-
   /** 销毁引擎 */
   destroy(): void {
     this.stop();
     this.callbacks = {};
-    this.state = this.initState();
-    this.detailedStatsCache = null;
+    this.clear(); // 清除事件监听
   }
 }

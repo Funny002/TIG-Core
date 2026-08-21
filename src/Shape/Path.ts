@@ -1,209 +1,187 @@
-// import { Shape, Point, Size } from '../Shape';
-//
-// export class Path extends Shape {
-//   private _commands: (string | number)[];
-//   private _currentPoint: Point;
-//
-//   constructor(startPoint: Point) {
-//     super(startPoint);
-//     this._commands = ['M', startPoint.x, startPoint.y];
-//     this._currentPoint = startPoint;
-//   }
-//
-//   get size(): Size {
-//     const bounds = this.bounds;
-//     return {
-//       width: bounds.width,
-//       height: bounds.height,
-//     };
-//   }
-//
-//   set size(value: Size) {
-//     // 路径size是只读的，由路径命令决定
-//     console.warn('Path size is read-only, determined by path commands');
-//   }
-//
-//   get commands(): (string | number)[] {
-//     return [...this._commands];
-//   }
-//
-//
-//   get bounds() {
-//     const points = this.getAllPoints();
-//
-//     if (points.length === 0) {
-//       return {
-//         top: this.y,
-//         left: this.x,
-//         right: this.x,
-//         bottom: this.y,
-//         width: 0,
-//         height: 0,
-//       };
-//     }
-//
-//     let minX = points[0].x;
-//     let maxX = points[0].x;
-//     let minY = points[0].y;
-//     let maxY = points[0].y;
-//
-//     for (let i = 1; i < points.length; i++) {
-//       const p = points[i];
-//       minX = Math.min(minX, p.x);
-//       maxX = Math.max(maxX, p.x);
-//       minY = Math.min(minY, p.y);
-//       maxY = Math.max(maxY, p.y);
-//     }
-//
-//     return {
-//       top: minY,
-//       left: minX,
-//       right: maxX,
-//       bottom: maxY,
-//       width: maxX - minX,
-//       height: maxY - minY,
-//     };
-//   }
-//
-//
-//   moveTo(point: Point): Path {
-//     this._commands.push('M', point.x, point.y);
-//     this._currentPoint = point;
-//     this.emit('size-changed', { width: this.width, height: this.height });
-//     return this;
-//   }
-//
-//
-//   lineTo(point: Point): Path {
-//     this._commands.push('L', point.x, point.y);
-//     this._currentPoint = point;
-//     this.emit('size-changed', { width: this.width, height: this.height });
-//     return this;
-//   }
-//
-//   bezierCurveTo(cp1: Point, cp2: Point, point: Point): Path {
-//     this._commands.push('C', cp1.x, cp1.y, cp2.x, cp2.y, point.x, point.y);
-//     this._currentPoint = point;
-//     this.emit('size-changed', { width: this.width, height: this.height });
-//     return this;
-//   }
-//
-//   quadraticCurveTo(cp: Point, point: Point): Path {
-//     this._commands.push('Q', cp.x, cp.y, point.x, point.y);
-//     this._currentPoint = point;
-//     this.emit('size-changed', { width: this.width, height: this.height });
-//     return this;
-//   }
-//
-//   closePath(): Path {
-//     this._commands.push('Z');
-//     this.emit('size-changed', { width: this.width, height: this.height });
-//     return this;
-//   }
-//
-//
-//   private getAllPoints(): Point[] {
-//     const points: Point[] = [];
-//     let currentPoint: Point = { x: 0, y: 0 };
-//
-//     for (let i = 0; i < this._commands.length; i++) {
-//       const cmd = this._commands[i];
-//
-//       if (cmd === 'M' || cmd === 'L') {
-//         const x = this._commands[++i] as number;
-//         const y = this._commands[++i] as number;
-//         currentPoint = { x, y };
-//         points.push(currentPoint);
-//       } else if (cmd === 'C') {
-//         // 三次贝塞尔曲线的控制点1
-//         const cp1x = this._commands[++i] as number;
-//         const cp1y = this._commands[++i] as number;
-//         points.push({ x: cp1x, y: cp1y });
-//
-//         // 三次贝塞尔曲线的控制点2
-//         const cp2x = this._commands[++i] as number;
-//         const cp2y = this._commands[++i] as number;
-//         points.push({ x: cp2x, y: cp2y });
-//
-//         // 三次贝塞尔曲线的结束点
-//         const ex = this._commands[++i] as number;
-//         const ey = this._commands[++i] as number;
-//         currentPoint = { x: ex, y: ey };
-//         points.push(currentPoint);
-//       } else if (cmd === 'Q') {
-//         // 二次贝塞尔曲线的控制点
-//         const cpx = this._commands[++i] as number;
-//         const cpy = this._commands[++i] as number;
-//         points.push({ x: cpx, y: cpy });
-//
-//         // 二次贝塞尔曲线的结束点
-//         const ex = this._commands[++i] as number;
-//         const ey = this._commands[++i] as number;
-//         currentPoint = { x: ex, y: ey };
-//         points.push(currentPoint);
-//       }
-//     }
-//
-//     return points;
-//   }
-//
-//   collision(other: Shape): boolean {
-//     const bounds1 = this.bounds;
-//     const bounds2 = other.bounds;
-//
-//     return !(
-//         bounds1.right < bounds2.left ||
-//         bounds1.left > bounds2.right ||
-//         bounds1.bottom < bounds2.top ||
-//         bounds1.top > bounds2.bottom
-//     );
-//   }
-//
-//   draw(ctx: CanvasRenderingContext2D): void {
-//     if (this._commands.length < 3) return;
-//
-//     ctx.beginPath();
-//
-//     for (let i = 0; i < this._commands.length; i++) {
-//       const cmd = this._commands[i];
-//
-//       if (cmd === 'M') {
-//         const x = this._commands[++i] as number;
-//         const y = this._commands[++i] as number;
-//         ctx.moveTo(x, y);
-//       } else if (cmd === 'L') {
-//         const x = this._commands[++i] as number;
-//         const y = this._commands[++i] as number;
-//         ctx.lineTo(x, y);
-//       } else if (cmd === 'C') {
-//         const cp1x = this._commands[++i] as number;
-//         const cp1y = this._commands[++i] as number;
-//         const cp2x = this._commands[++i] as number;
-//         const cp2y = this._commands[++i] as number;
-//         const ex = this._commands[++i] as number;
-//         const ey = this._commands[++i] as number;
-//         ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, ex, ey);
-//       } else if (cmd === 'Q') {
-//         const cpx = this._commands[++i] as number;
-//         const cpy = this._commands[++i] as number;
-//         const ex = this._commands[++i] as number;
-//         const ey = this._commands[++i] as number;
-//         ctx.quadraticCurveTo(cpx, cpy, ex, ey);
-//       } else if (cmd === 'Z') {
-//         ctx.closePath();
-//       }
-//     }
-//
-//     ctx.stroke();
-//   }
-//
-//   getState(): Record<string, any> {
-//     return {
-//       type: 'Path',
-//       startPoint: { x: this.x, y: this.y },
-//       commands: this.commands,
-//       bounds: this.bounds,
-//       commandCount: this._commands.length,
-//     };
-//   }
-// }
+import { EngineLogger } from '../Logger';
+import { Shape } from '../Core';
+import { CanvasStyle } from '../Lib';
+import { boundsIntersect, computeBounds } from '../Lib';
+import type { CanvasStyleConfig } from '../Lib';
+import type { Bounding, Point, Size } from '../Core';
+
+/** 路径选项接口 */
+export interface PathOptions {
+  x: number;                         // 起始坐标
+  y: number;                         // 起始坐标
+  visible: boolean;                  // 是否可见
+  style: Partial<CanvasStyleConfig>; // 样式配置
+}
+
+/**
+ * 路径形状（SVG 风格命令）
+ * 支持 moveTo / lineTo / bezierCurveTo / quadraticCurveTo / closePath
+ * @extends Shape
+ */
+export class Path extends Shape {
+  public readonly type = 'path';
+  private commands: (string | number)[] = [];
+  public readonly style: CanvasStyle;
+
+  /** 紧凑包围盒（由路径点计算） */
+  protected computeBounds(): Bounding {
+    return computeBounds(this.getAllPoints(), this.point);
+  }
+
+  /** 尺寸由路径命令决定（只读） */
+  get size(): Size {
+    const bounds = this.bounds;
+    return { width: bounds.width, height: bounds.height };
+  }
+
+  /** 中心点 X（紧凑包围盒中心） */
+  get centerX(): number {
+    return this.bounds.left + this.bounds.width / 2;
+  }
+
+  /** 中心点 Y（紧凑包围盒中心） */
+  get centerY(): number {
+    return this.bounds.top + this.bounds.height / 2;
+  }
+
+  /** 宽度为只读，由路径命令决定 */
+  set width(_: number) {
+    EngineLogger.warn('Path width 是只读属性，由路径命令决定');
+  }
+
+  /** 高度为只读，由路径命令决定 */
+  set height(_: number) {
+    EngineLogger.warn('Path height 是只读属性，由路径命令决定');
+  }
+
+  /** 获取路径命令副本 */
+  get commandList(): (string | number)[] {
+    return [...this.commands];
+  }
+
+  constructor(config: Partial<PathOptions> = {}) {
+    super({ x: config.x ?? 0, y: config.y ?? 0 });
+    this.visible = config.visible ?? true;
+    this.style = new CanvasStyle(config.style ?? {});
+    // 初始 moveTo 到起点
+    this.commands = ['M', this.x, this.y];
+  }
+
+  /** 移动画笔到指定点 */
+  moveTo(point: Point): this {
+    this.commands.push('M', point.x, point.y);
+    this.invalidateBounds();
+    this.emit('size-changed', { width: this.width, height: this.height });
+    return this;
+  }
+
+  /** 画直线到指定点 */
+  lineTo(point: Point): this {
+    this.commands.push('L', point.x, point.y);
+    this.invalidateBounds();
+    this.emit('size-changed', { width: this.width, height: this.height });
+    return this;
+  }
+
+  /** 画三次贝塞尔曲线 */
+  bezierCurveTo(cp1: Point, cp2: Point, point: Point): this {
+    this.commands.push('C', cp1.x, cp1.y, cp2.x, cp2.y, point.x, point.y);
+    this.invalidateBounds();
+    this.emit('size-changed', { width: this.width, height: this.height });
+    return this;
+  }
+
+  /** 画二次贝塞尔曲线 */
+  quadraticCurveTo(cp: Point, point: Point): this {
+    this.commands.push('Q', cp.x, cp.y, point.x, point.y);
+    this.invalidateBounds();
+    this.emit('size-changed', { width: this.width, height: this.height });
+    return this;
+  }
+
+  /** 闭合路径 */
+  closePath(): this {
+    this.commands.push('Z');
+    return this;
+  }
+
+  /** 清空路径并回到起点 */
+  clear(): this {
+    this.commands = ['M', this.x, this.y];
+    this.invalidateBounds();
+    this.emit('size-changed', { width: 0, height: 0 });
+    return this;
+  }
+
+  /** 获取路径上的所有点（含贝塞尔控制点），用于计算包围盒 */
+  private getAllPoints(): Point[] {
+    const points: Point[] = [];
+    const commands = this.commands;
+
+    for (let i = 0; i < commands.length; i += 1) {
+      const cmd = commands[i];
+
+      if (cmd === 'M' || cmd === 'L') {
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+      } else if (cmd === 'C') {
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+      } else if (cmd === 'Q') {
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+        points.push({ x: commands[++i] as number, y: commands[++i] as number });
+      }
+      // 'Z' 不产生新点
+    }
+
+    return points;
+  }
+
+  protected paint(ctx: CanvasRenderingContext2D): void {
+    const commands = this.commands;
+    if (commands.length < 3) return;
+
+    ctx.beginPath();
+    for (let i = 0; i < commands.length; i += 1) {
+      const cmd = commands[i];
+
+      if (cmd === 'M') {
+        ctx.moveTo(commands[++i] as number, commands[++i] as number);
+      } else if (cmd === 'L') {
+        ctx.lineTo(commands[++i] as number, commands[++i] as number);
+      } else if (cmd === 'C') {
+        ctx.bezierCurveTo(
+          commands[++i] as number, commands[++i] as number,
+          commands[++i] as number, commands[++i] as number,
+          commands[++i] as number, commands[++i] as number,
+        );
+      } else if (cmd === 'Q') {
+        ctx.quadraticCurveTo(
+          commands[++i] as number, commands[++i] as number,
+          commands[++i] as number, commands[++i] as number,
+        );
+      } else if (cmd === 'Z') {
+        ctx.closePath();
+      }
+    }
+
+    this.style.apply(ctx);
+    this.style.drawFill(ctx);
+    this.style.drawStroke(ctx);
+  }
+
+  collision(other: Shape): boolean {
+    // 路径与其他形状的碰撞退化为包围盒检测
+    return boundsIntersect(this.bounds, other.bounds);
+  }
+
+  getState(): Record<string, any> {
+    return {
+      name: 'Path',
+      ...super.getState(),
+      commands: this.commandList,
+      commandCount: this.commands.length,
+      style: this.style.getConfig(),
+    };
+  }
+}

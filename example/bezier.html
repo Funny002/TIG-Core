@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIG-Core · 贝塞尔曲线</title>
+    <link rel="stylesheet" href="./common.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>TIG-Core<span class="sub">· 贝塞尔曲线</span></div>
+      <nav class="nav">
+        <a href="./index.html">演练场</a>
+        <a href="./shapes.html">图形</a>
+        <a href="./bezier.html" class="active">贝塞尔</a>
+        <a href="./benchmark.html">性能</a>
+        <a href="./scene.html">Scene</a>
+      </nav>
+    </header>
+    <main class="stage">
+      <canvas class="canvas"></canvas>
+      <p class="tip">拖动橙色控制点调整曲线；切换阶数查看 线性 / 二次 / 三次 贝塞尔（对应 Utils 的 linearBezier / quadraticBezier / cubicBezier）</p>
+    </main>
+    <footer class="panel">
+      <div class="group">
+        <span class="label">阶数</span>
+        <div class="seg" id="order-group"></div>
+      </div>
+      <div class="group">
+        <button class="btn" id="reset">重置控制点</button>
+      </div>
+    </footer>
+    <script type="module">
+      import { Core, Utils } from '../src/index';
+
+      const W = 900;
+      const H = 520;
+      const canvas = new Core.Canvas({
+        selectors: '.canvas', width: W, height: H, ratio: window.devicePixelRatio || 1,
+      });
+
+      const ORDERS = {
+        linear: {
+          label: '线性', n: 2,
+          points: () => [{ x: 150, y: 420 }, { x: 750, y: 140 }],
+          sample: (t, p) => Utils.linearBezier(p[0], p[1], t),
+        },
+        quadratic: {
+          label: '二次', n: 3,
+          points: () => [{ x: 140, y: 440 }, { x: 450, y: 90 }, { x: 760, y: 440 }],
+          sample: (t, p) => Utils.quadraticBezier(p[0], p[1], p[2], t),
+        },
+        cubic: {
+          label: '三次', n: 4,
+          points: () => [{ x: 120, y: 420 }, { x: 320, y: 110 }, { x: 580, y: 110 }, { x: 780, y: 420 }],
+          sample: (t, p) => Utils.cubicBezier(p[0], p[1], p[2], p[3], t),
+        },
+      };
+
+      let orderKey = 'cubic';
+      let order = ORDERS.cubic;
+      let points = order.points();
+      let dragging = -1;
+
+      function draw() {
+        canvas.clear();
+        const ctx = canvas.context;
+
+        // 控制多边形（虚线）
+        if (points.length > 1) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(127, 139, 161, 0.5)';
+          ctx.setLineDash([5, 5]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, points[0].y);
+          for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 曲线（采样 120 段）
+        ctx.save();
+        ctx.strokeStyle = '#4f8cff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        const STEPS = 120;
+        for (let i = 0; i <= STEPS; i += 1) {
+          const p = order.sample(i / STEPS, points);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // 控制点
+        ctx.save();
+        ctx.fillStyle = '#ffb020';
+        for (const p of points) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // 拖拽控制点
+      canvas.on('mousedown', (e) => {
+        dragging = -1;
+        let best = -1;
+        let bestD = 22 * 22;
+        for (let i = 0; i < points.length; i += 1) {
+          const dx = points[i].x - e.start.x;
+          const dy = points[i].y - e.start.y;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        dragging = best;
+      });
+      canvas.on('mousemove', (e) => {
+        if (dragging < 0 || !e.point) return;
+        points[dragging] = {
+          x: Math.max(0, Math.min(W, e.point.x)),
+          y: Math.max(0, Math.min(H, e.point.y)),
+        };
+        draw();
+      });
+      canvas.on('mouseup', () => { dragging = -1; });
+
+      // 阶数切换
+      const orderGroup = document.getElementById('order-group');
+      Object.entries(ORDERS).forEach(([key, o], i) => {
+        const btn = document.createElement('button');
+        btn.className = 'seg-btn' + (i === 2 ? ' active' : '');
+        btn.textContent = o.label;
+        btn.addEventListener('click', () => {
+          orderKey = key;
+          order = o;
+          points = o.points();
+          orderGroup.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('active', b === btn));
+          draw();
+        });
+        orderGroup.appendChild(btn);
+      });
+
+      document.getElementById('reset').addEventListener('click', () => {
+        points = order.points();
+        draw();
+      });
+
+      draw();
+    </script>
+  </body>
+</html>

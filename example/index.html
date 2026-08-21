@@ -2,55 +2,289 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8">
-    <title>TIG-Core</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIG-Core · Playground 演练场</title>
+    <link rel="stylesheet" href="./common.css">
   </head>
-  <body class="root">
-    <div class="app">
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>TIG-Core<span class="sub">· Playground 演练场</span></div>
+      <nav class="nav">
+        <a href="./index.html" class="active">演练场</a>
+        <a href="./shapes.html">图形</a>
+        <a href="./bezier.html">贝塞尔</a>
+        <a href="./benchmark.html">性能</a>
+        <a href="./scene.html">Scene</a>
+      </nav>
+      <span class="stats push" id="stats"></span>
+    </header>
+
+    <main class="stage">
       <canvas class="canvas"></canvas>
-    </div>
+      <p class="tip" id="tip">选择图形类型，按住鼠标拖拽绘制；切到「动画」模式让图形按固定时间步长反弹；可用「暂停 / 单步」逐帧调试</p>
+    </main>
+
+    <footer class="panel">
+      <div class="group">
+        <span class="label">图形</span>
+        <div class="seg" id="shape-group"></div>
+      </div>
+      <div class="group">
+        <span class="label">模式</span>
+        <div class="seg" id="mode-group"></div>
+      </div>
+      <div class="group" id="anim-params">
+        <span class="label">数量</span>
+        <input type="range" class="range" id="count" min="1" max="60" step="1" value="12">
+        <span class="value" id="count-val">12</span>
+        <span class="label">速度</span>
+        <input type="range" class="range" id="speed" min="0.3" max="3" step="0.1" value="1">
+        <span class="value" id="speed-val">1.0x</span>
+      </div>
+      <div class="group" id="run-controls">
+        <button class="btn" id="toggle-pause">暂停</button>
+        <button class="btn" id="step" disabled>单步</button>
+      </div>
+      <div class="group">
+        <button class="btn" id="clear">清空</button>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { Core, Shape } from '../src/index';
+
+      const W = 760;
+      const H = 480;
+
+      const canvas = new Core.Canvas({
+        selectors: '.canvas',
+        width: W,
+        height: H,
+        ratio: window.devicePixelRatio || 1,
+      });
+
+      const SHAPE_TYPES = [
+        { key: 'circle', label: 'Circle', color: '#4f8cff40' },
+        { key: 'rectangle', label: 'Rect', color: '#ff6b6b40' },
+        { key: 'line', label: 'Line', color: '#2ecc7140' },
+        { key: 'triangle', label: 'Triangle', color: '#9b59b640' },
+      ];
+
+      let shapeType = 'circle';
+      let mode = 'draw';
+      let speedScale = 1;
+      let count = 12;
+
+      const colorOf = () => SHAPE_TYPES.find((s) => s.key === shapeType).color;
+
+      function makeShape(type, { x, y, w, h, fill, stroke }) {
+        switch (type) {
+          case 'circle':
+            return new Shape.Circle({ x, y, width: w, height: h, style: { fillStyle: fill, strokeStyle: stroke } });
+          case 'rectangle':
+            return new Shape.Rectangle({ x, y, width: w, height: h, rounds: 8, style: { fillStyle: fill, strokeStyle: stroke } });
+          case 'line':
+            return new Shape.Line({ x, y, endPoint: { x: x + w, y: y + h }, style: { strokeStyle: stroke, lineWidth: 3 } });
+          case 'triangle':
+            return new Shape.Triangle({ x, y, width: w, height: h, style: { fillStyle: fill, strokeStyle: stroke } });
+        }
+      }
+
+      function updateGeometry(shape, start, point) {
+        if (shape.type === 'line') {
+          shape.setPoint(start, point);
+        } else {
+          shape.x = Math.min(start.x, point.x);
+          shape.y = Math.min(start.y, point.y);
+          shape.width = Math.abs(point.x - start.x);
+          shape.height = Math.abs(point.y - start.y);
+        }
+      }
+
+      function randomShape() {
+        const color = colorOf();
+        const s = 24 + Math.random() * 40;
+        const shape = makeShape(shapeType, {
+          x: Math.random() * (W - s),
+          y: Math.random() * (H - s),
+          w: s, h: s, fill: color, stroke: color,
+        });
+        shape.node = { vx: (Math.random() - 0.5) * 320, vy: (Math.random() - 0.5) * 320 };
+        return shape;
+      }
+
+      // 绘制模式
+      const drawn = [];
+      let current = null;
+
+      function renderDraw() {
+        canvas.clear();
+        for (const s of drawn) s.draw(canvas.context);
+        if (current) current.draw(canvas.context);
+      }
+
+      // 动画模式（固定时间步长引擎）
+      let animShapes = [];
+      const engine = new Core.Engine({ mode: 'fixed' });
+
+      engine.setCallbacks({
+        onUpdate: (timestep) => {
+          const dt = timestep / 1000;
+          for (const s of animShapes) {
+            if (s.type === 'line') {
+              s.move(s.node.vx * speedScale * dt, s.node.vy * speedScale * dt);
+            } else {
+              s.x += s.node.vx * speedScale * dt;
+              s.y += s.node.vy * speedScale * dt;
+            }
+            const b = s.bounds;
+            if (b.left < 0 || b.right > W) s.node.vx = -s.node.vx;
+            if (b.top < 0 || b.bottom > H) s.node.vy = -s.node.vy;
+          }
+        },
+        onRender: () => {
+          canvas.clear();
+          for (const s of animShapes) s.draw(canvas.context);
+        },
+      });
+
+      function spawnAnimShapes() {
+        animShapes = [];
+        for (let i = 0; i < count; i += 1) animShapes.push(randomShape());
+      }
+
+      const tipEl = document.getElementById('tip');
+      const animParamsEl = document.getElementById('anim-params');
+      const runControlsEl = document.getElementById('run-controls');
+
+      function setMode(m) {
+        mode = m;
+        document.querySelectorAll('#mode-group .seg-btn').forEach((b) => {
+          b.classList.toggle('active', b.dataset.mode === m);
+        });
+        if (m === 'animate') {
+          engine.stop();
+          drawn.length = 0;
+          current = null;
+          spawnAnimShapes();
+          engine.start();
+          animParamsEl.style.display = 'flex';
+          runControlsEl.style.display = 'flex';
+          tipEl.textContent = '固定时间步长动画：图形按物理步长更新、与刷新率解耦；「暂停」后可用「单步」逐帧调试';
+        } else {
+          engine.stop();
+          animShapes = [];
+          canvas.clear();
+          renderDraw();
+          animParamsEl.style.display = 'none';
+          runControlsEl.style.display = 'none';
+          tipEl.textContent = '选择图形类型，按住鼠标拖拽绘制；可连续绘制多个图形';
+        }
+        refreshRunUI();
+      }
+
+      // 图形按钮
+      const shapeGroup = document.getElementById('shape-group');
+      SHAPE_TYPES.forEach((s, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'seg-btn' + (i === 0 ? ' active' : '');
+        btn.dataset.shape = s.key;
+        btn.textContent = s.label;
+        btn.addEventListener('click', () => {
+          shapeType = s.key;
+          shapeGroup.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('active', b === btn));
+          if (mode === 'animate') spawnAnimShapes();
+        });
+        shapeGroup.appendChild(btn);
+      });
+
+      // 模式按钮
+      const modeGroup = document.getElementById('mode-group');
+      [['draw', '绘制'], ['animate', '动画']].forEach(([key, label], i) => {
+        const btn = document.createElement('button');
+        btn.className = 'seg-btn' + (i === 0 ? ' active' : '');
+        btn.dataset.mode = key;
+        btn.textContent = label;
+        btn.addEventListener('click', () => setMode(key));
+        modeGroup.appendChild(btn);
+      });
+
+      // 暂停 / 单步（引擎生命周期）
+      const pauseBtn = document.getElementById('toggle-pause');
+      const stepBtn = document.getElementById('step');
+
+      function refreshRunUI() {
+        const running = engine.isRunning();
+        pauseBtn.textContent = running ? '暂停' : (engine.isPaused() ? '继续' : '暂停');
+        stepBtn.disabled = running;
+      }
+
+      pauseBtn.addEventListener('click', () => {
+        if (mode !== 'animate') { setMode('animate'); return; }
+        if (engine.isRunning()) engine.pause();
+        else engine.resume();
+        refreshRunUI();
+      });
+      stepBtn.addEventListener('click', () => {
+        if (mode === 'animate' && !engine.isRunning()) engine.step(1);
+      });
+      engine.on('start', refreshRunUI);
+      engine.on('stop', refreshRunUI);
+      engine.on('pause', refreshRunUI);
+      engine.on('resume', refreshRunUI);
+
+      document.getElementById('clear').addEventListener('click', () => {
+        if (mode === 'draw') {
+          drawn.length = 0;
+          current = null;
+          renderDraw();
+        } else {
+          spawnAnimShapes();
+        }
+      });
+
+      const countEl = document.getElementById('count');
+      const speedEl = document.getElementById('speed');
+      countEl.addEventListener('input', () => {
+        count = Number(countEl.value);
+        document.getElementById('count-val').textContent = count;
+      });
+      countEl.addEventListener('change', () => { if (mode === 'animate') spawnAnimShapes(); });
+      speedEl.addEventListener('input', () => {
+        speedScale = Number(speedEl.value);
+        document.getElementById('speed-val').textContent = `${speedScale.toFixed(1)}x`;
+      });
+
+      // 拖拽绘制
+      canvas.on('mousedown', (e) => {
+        if (mode !== 'draw') return;
+        const color = colorOf();
+        current = makeShape(shapeType, { x: e.start.x, y: e.start.y, w: 0, h: 0, fill: color, stroke: color });
+        renderDraw();
+      });
+      canvas.on('mousemove', (e) => {
+        if (mode !== 'draw' || !current) return;
+        updateGeometry(current, e.start, e.point);
+        renderDraw();
+      });
+      canvas.on('mouseup', () => {
+        if (mode !== 'draw' || !current) return;
+        drawn.push(current);
+        current = null;
+        renderDraw();
+      });
+
+      // 统计（含运行状态）
+      const statsEl = document.getElementById('stats');
+      setInterval(() => {
+        const s = engine.getStats();
+        const n = mode === 'draw' ? drawn.length : animShapes.length;
+        const state = engine.isRunning() ? '运行中' : (engine.isPaused() ? '已暂停' : '已停止');
+        statsEl.textContent = `FPS ${s.fps.toFixed(0)} · 图形 ${n} · ${state}`;
+      }, 250);
+
+      renderDraw();
+      refreshRunUI();
+    </script>
   </body>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    .root,
-    .app {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .app {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: center;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .canvas {
-      width: 600px;
-      height: 400px;
-      border: 1px solid #ddd;
-      box-sizing: content-box;
-      background-size: 20px 20px;
-      background-image: url("data:image/gif;base64,R0lGODlhFAAUAJEAAP///8zMzP///wAAACH5BAUAAAIALAAAAAAUABQAAAIohI+hy+jAYnhJLnrsxVBP7n1YyHVaSYKhh7Lq+VotPLo1TaW3HEtlAQA7");
-    }
-  </style>
-  <script type="module">
-    import { Core, Shape } from '../src/main';
-
-    const canvas = new Core.Canvas({ selectors: '.canvas', width: 600, height: 400 });
-    const line = new Shape.Line({ x: 0, y: 0, style: { strokeStyle: 'red' } });
-
-    canvas.on('mousemove', (e) => {
-      line.setPoint(e.start, e.point);
-      //
-      canvas.clear();
-      line.draw(canvas.context);
-    });
-  </script>
 </html>

@@ -1,0 +1,160 @@
+/* TIG-Core 示例共享样式 */
+:root {
+  --bg: #0f1319;
+  --panel: #161c26;
+  --card: #1c2430;
+  --line: #232c3a;
+  --line-soft: #1b2330;
+  --text: #dbe2ee;
+  --text-dim: #9fb0c9;
+  --text-faint: #7c8ba1;
+  --accent: #4f8cff;
+  --accent-soft: #2a3646;
+  --ok: #2ecc71;
+  --warn: #ffb020;
+  --danger: #ff2d55;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  flex: 0 0 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent);
+}
+.brand .sub { font-weight: 400; font-size: 13px; color: var(--text-faint); }
+
+/* 导航 */
+.nav { display: flex; gap: 4px; margin-left: 12px; flex-wrap: wrap; }
+.nav a {
+  color: var(--text-faint); text-decoration: none; font-size: 13px;
+  padding: 5px 9px; border-radius: 6px; white-space: nowrap;
+}
+.nav a:hover { color: var(--text); background: var(--accent-soft); }
+.nav a.active { color: var(--text); background: var(--card); }
+
+/* ---------- 舞台 ---------- */
+.stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  overflow: auto;
+}
+.canvas {
+  box-sizing: content-box;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: #141a24;
+  background-size: 24px 24px;
+  background-image: radial-gradient(circle, #1c2431 1px, transparent 1px);
+  cursor: crosshair;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.tip { font-size: 13px; color: var(--text-faint); text-align: center; max-width: 720px; line-height: 1.6; }
+
+/* ---------- 分段按钮 / 统计 ---------- */
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg-btn {
+  padding: 5px 12px;
+  background: var(--card);
+  color: var(--text-dim);
+  border: none;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 12px;
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn:hover { background: var(--accent-soft); color: var(--text); }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.stats { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: pre-line; }
+.push { margin-left: auto; }
+
+/* ---------- 控制面板（底部） ---------- */
+.panel {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.group { display: flex; align-items: center; gap: 8px; }
+.label { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+.value { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 34px; }
+.btn {
+  padding: 6px 14px;
+  background: var(--card); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: 8px;
+  cursor: pointer; font-size: 12px;
+}
+.btn:hover { background: var(--accent-soft); color: var(--text); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+input.range {
+  width: 110px;
+  -webkit-appearance: none; appearance: none;
+  height: 4px; background: var(--line); border-radius: 2px; outline: none;
+}
+input.range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer;
+}
+
+/* 开关 */
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: 0 0 auto; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--line); border-radius: 22px; transition: 0.2s;
+}
+.switch .slider::before {
+  content: ""; position: absolute; height: 16px; width: 16px;
+  left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(18px); }
+
+/* ---------- 结果卡片 ---------- */
+.results {
+  flex: 0 0 auto;
+  margin: 0 16px 12px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+.results b { color: var(--text); }
+.results .hi { color: var(--ok); }
+.results .lo { color: var(--warn); }
